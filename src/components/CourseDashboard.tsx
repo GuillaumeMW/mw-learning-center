@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Course, CourseStatus } from "@/types/course";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,7 @@ const CourseDashboard = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCourses();
@@ -61,19 +63,11 @@ const CourseDashboard = () => {
   };
 
   const handleStartCourse = (courseId: string) => {
-    // TODO: Navigate to course content
-    toast({
-      title: "Coming Soon",
-      description: "Course content will be available soon!",
-    });
+    navigate(`/course/${courseId}`);
   };
 
   const handleContinueCourse = (courseId: string) => {
-    // TODO: Navigate to course content
-    toast({
-      title: "Continue Learning",
-      description: "Redirecting to course content...",
-    });
+    navigate(`/course/${courseId}`);
   };
 
   if (loading) {
