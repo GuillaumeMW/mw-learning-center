@@ -21,6 +21,24 @@ export interface Lesson {
   updated_at: string;
 }
 
+export interface Comment {
+  id: string;
+  lesson_id: string;
+  user_id: string;
+  parent_comment_id?: string;
+  content: string;
+  is_edited: boolean;
+  is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+  author?: {
+    first_name: string;
+    last_name: string;
+    avatar_url?: string;
+  };
+  replies?: Comment[];
+}
+
 export interface UserProgress {
   id: string;
   user_id: string;

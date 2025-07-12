@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { CommentThread } from "@/components/CommentThread";
 import { 
   ArrowLeft, 
   ArrowRight,
@@ -292,6 +293,9 @@ const LessonPage = () => {
             />
           </CardContent>
         </Card>
+
+        {/* Comments Section */}
+        <CommentThread lessonId={lessonId!} className="mb-8" />
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between">
