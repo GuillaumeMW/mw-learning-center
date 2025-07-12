@@ -2,13 +2,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Course, CourseStatus } from "@/types/course";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import CourseCard from "./CourseCard";
+import UserMenu from "./UserMenu";
 import { Loader2, GraduationCap, Target, BookOpen } from "lucide-react";
 
 const CourseDashboard = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     fetchCourses();
@@ -86,21 +89,33 @@ const CourseDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header Section */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 rounded-full bg-gradient-primary">
-            <GraduationCap className="h-8 w-8 text-white" />
+      {/* Header Section with User Menu */}
+      <div className="flex justify-between items-start">
+        <div className="text-center flex-1 space-y-4">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 rounded-full bg-gradient-primary">
+              <GraduationCap className="h-8 w-8 text-white" />
+            </div>
           </div>
+          
+          <h1 className="text-4xl font-bold tracking-tight">
+            MW Learning Center
+          </h1>
+          
+          {profile && (
+            <p className="text-xl text-primary font-medium">
+              Welcome back, {profile.first_name}!
+            </p>
+          )}
+          
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Master the art of relocation with our comprehensive certification program
+          </p>
         </div>
-        
-        <h1 className="text-4xl font-bold tracking-tight">
-          MW Learning Center
-        </h1>
-        
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Master the art of relocation with our comprehensive certification program
-        </p>
+
+        <div className="flex items-center gap-4">
+          <UserMenu />
+        </div>
       </div>
 
       {/* Stats Section */}
