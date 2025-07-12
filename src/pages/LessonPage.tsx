@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import { 
   ArrowLeft, 
   ArrowRight,
@@ -16,7 +17,8 @@ import {
   Clock, 
   BookOpen,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Play
 } from "lucide-react";
 
 const LessonPage = () => {
@@ -31,6 +33,7 @@ const LessonPage = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
 
   useEffect(() => {
     if (courseId && lessonId && user) {
@@ -255,6 +258,28 @@ const LessonPage = () => {
             <Progress value={((currentIndex + 1) / totalLessons) * 100} className="h-2" />
           </div>
         </div>
+
+        {/* Video Player */}
+        {lesson.video_url && (
+          <Card className="mb-8">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Play className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">Video Lesson</h2>
+              </div>
+              <VideoPlayer
+                videoUrl={lesson.video_url}
+                onProgress={setVideoProgress}
+                onComplete={() => {
+                  if (!isCompleted && videoProgress > 80) {
+                    handleCompleteLesson();
+                  }
+                }}
+                className="aspect-video"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Lesson Content */}
         <Card className="mb-8">
