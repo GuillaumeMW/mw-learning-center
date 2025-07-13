@@ -53,7 +53,7 @@ export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) 
         .from('comments')
         .select(`
           *,
-          profiles!comments_user_id_fkey (
+          profiles!user_id (
             first_name,
             last_name,
             avatar_url
