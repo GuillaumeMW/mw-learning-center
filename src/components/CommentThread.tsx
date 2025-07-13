@@ -48,25 +48,46 @@ export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) 
 
   const fetchComments = async () => {
     try {
-      // Fetch comments with author information
-      const { data: commentsData, error } = await supabase
+      // First, fetch comments
+      const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select(`
-          *,
-          profiles!user_id (
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('lesson_id', lessonId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (commentsError) throw commentsError;
+
+      if (!commentsData || commentsData.length === 0) {
+        setComments([]);
+        return;
+      }
+
+      // Get unique user IDs from comments
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+
+      // Fetch profile information for all users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user profiles for easy lookup
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.user_id, profile);
+      });
+
+      // Merge comments with profile data
+      const commentsWithProfiles = commentsData.map(comment => ({
+        ...comment,
+        profiles: profilesMap.get(comment.user_id)
+      }));
 
       // Organize comments into threads
-      const threadedComments = organizeComments(commentsData || []);
+      const threadedComments = organizeComments(commentsWithProfiles);
       setComments(threadedComments);
     } catch (error) {
       console.error('Error fetching comments:', error);
