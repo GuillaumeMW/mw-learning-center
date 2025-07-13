@@ -24,11 +24,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface CommentThreadProps {
-  lessonId: string;
+  lessonId?: string;
+  subsectionId?: string;
   className?: string;
 }
 
-export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) => {
+export const CommentThread = ({ lessonId, subsectionId, className = "" }: CommentThreadProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -41,20 +42,32 @@ export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) 
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (lessonId) {
+    if (lessonId || subsectionId) {
       fetchComments();
     }
-  }, [lessonId]);
+  }, [lessonId, subsectionId]);
 
   const fetchComments = async () => {
     try {
-      // First, fetch comments
-      const { data: commentsData, error: commentsError } = await supabase
+      // Build query based on which ID is provided
+      let query = supabase
         .from('comments')
         .select('*')
-        .eq('lesson_id', lessonId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true });
+
+      if (lessonId) {
+        query = query.eq('lesson_id', lessonId);
+      } else if (subsectionId) {
+        query = query.eq('subsection_id', subsectionId);
+      } else {
+        // If neither ID is provided, return empty
+        setComments([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: commentsData, error: commentsError } = await query;
 
       if (commentsError) throw commentsError;
 
@@ -140,13 +153,21 @@ export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) 
 
     setSubmitting(true);
     try {
+      const insertData: any = {
+        user_id: user.id,
+        content: newComment.trim(),
+      };
+
+      // Add appropriate ID based on which is provided
+      if (lessonId) {
+        insertData.lesson_id = lessonId;
+      } else if (subsectionId) {
+        insertData.subsection_id = subsectionId;
+      }
+
       const { error } = await supabase
         .from('comments')
-        .insert({
-          lesson_id: lessonId,
-          user_id: user.id,
-          content: newComment.trim(),
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -174,14 +195,22 @@ export const CommentThread = ({ lessonId, className = "" }: CommentThreadProps) 
 
     setSubmitting(true);
     try {
+      const insertData: any = {
+        user_id: user.id,
+        parent_comment_id: parentId,
+        content: replyContent.trim(),
+      };
+
+      // Add appropriate ID based on which is provided
+      if (lessonId) {
+        insertData.lesson_id = lessonId;
+      } else if (subsectionId) {
+        insertData.subsection_id = subsectionId;
+      }
+
       const { error } = await supabase
         .from('comments')
-        .insert({
-          lesson_id: lessonId,
-          user_id: user.id,
-          parent_comment_id: parentId,
-          content: replyContent.trim(),
-        });
+        .insert(insertData);
 
       if (error) throw error;
 

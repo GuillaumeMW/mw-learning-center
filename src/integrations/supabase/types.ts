@@ -23,6 +23,7 @@ export type Database = {
           is_edited: boolean
           lesson_id: string
           parent_comment_id: string | null
+          subsection_id: string | null
           updated_at: string
           user_id: string
         }
@@ -34,6 +35,7 @@ export type Database = {
           is_edited?: boolean
           lesson_id: string
           parent_comment_id?: string | null
+          subsection_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -45,6 +47,7 @@ export type Database = {
           is_edited?: boolean
           lesson_id?: string
           parent_comment_id?: string | null
+          subsection_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -210,6 +213,91 @@ export type Database = {
         }
         Relationships: []
       }
+      sections: {
+        Row: {
+          course_id: string
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subsections: {
+        Row: {
+          content: string | null
+          created_at: string
+          duration_minutes: number | null
+          id: string
+          order_index: number
+          section_id: string
+          subsection_type: string
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          order_index: number
+          section_id: string
+          subsection_type?: string
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          duration_minutes?: number | null
+          id?: string
+          order_index?: number
+          section_id?: string
+          subsection_type?: string
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subsections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_progress: {
         Row: {
           completed_at: string | null
@@ -218,6 +306,7 @@ export type Database = {
           id: string
           lesson_id: string | null
           progress_percentage: number | null
+          subsection_id: string | null
           updated_at: string
           user_id: string
         }
@@ -228,6 +317,7 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           progress_percentage?: number | null
+          subsection_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -238,6 +328,7 @@ export type Database = {
           id?: string
           lesson_id?: string | null
           progress_percentage?: number | null
+          subsection_id?: string | null
           updated_at?: string
           user_id?: string
         }

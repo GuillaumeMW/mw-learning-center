@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import CoursePage from "./pages/CoursePage";
 import LessonPage from "./pages/LessonPage";
+import { SubsectionPage } from "./pages/SubsectionPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <LessonPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/course/:courseId/subsection/:subsectionId" 
+              element={
+                <ProtectedRoute>
+                  <SubsectionPage />
                 </ProtectedRoute>
               } 
             />

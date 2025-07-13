@@ -9,6 +9,30 @@ export interface Course {
   updated_at: string;
 }
 
+export interface Section {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string | null;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+  subsections?: Subsection[];
+}
+
+export interface Subsection {
+  id: string;
+  section_id: string;
+  title: string;
+  content: string | null;
+  video_url: string | null;
+  subsection_type: 'content' | 'quiz';
+  order_index: number;
+  duration_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Lesson {
   id: string;
   course_id: string;
@@ -23,7 +47,8 @@ export interface Lesson {
 
 export interface Comment {
   id: string;
-  lesson_id: string;
+  lesson_id?: string; // Optional for backward compatibility
+  subsection_id?: string; // New field for sections structure
   user_id: string;
   parent_comment_id?: string;
   content: string;
@@ -43,7 +68,8 @@ export interface UserProgress {
   id: string;
   user_id: string;
   course_id: string;
-  lesson_id: string | null;
+  lesson_id?: string | null; // Optional for backward compatibility
+  subsection_id?: string | null; // New field for sections structure
   completed_at: string | null;
   progress_percentage: number;
   created_at: string;

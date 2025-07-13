@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Course, Lesson } from "@/types/course";
+import { Course, Lesson, Section } from "@/types/course";
+import { CourseStructure } from "@/components/CourseStructure";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,10 +27,12 @@ const CoursePage = () => {
   const { toast } = useToast();
 
   const [course, setCourse] = useState<Course | null>(null);
+  const [sections, setSections] = useState<Section[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
+  const [completedItems, setCompletedItems] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [courseProgress, setCourseProgress] = useState(0);
+  const [hasStructuredContent, setHasStructuredContent] = useState(false);
 
   useEffect(() => {
     if (courseId && user) {
@@ -49,39 +52,72 @@ const CoursePage = () => {
         .single();
 
       if (courseError) throw courseError;
+      setCourse(courseData);
 
-      // Fetch lessons
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
-        .select('*')
+      // Check if we have sections (new structure)
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from('sections')
+        .select('id')
         .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
+        .limit(1);
 
-      if (lessonsError) throw lessonsError;
-
-      // Fetch user progress
-      const { data: progressData, error: progressError } = await supabase
-        .from('user_progress')
-        .select('lesson_id, completed_at')
-        .eq('course_id', courseId)
-        .eq('user_id', user.id)
-        .not('completed_at', 'is', null);
-
-      if (progressError && progressError.code !== 'PGRST116') {
-        throw progressError;
+      if (sectionsError && sectionsError.code !== 'PGRST116') {
+        throw sectionsError;
       }
 
-      setCourse(courseData);
-      setLessons(lessonsData || []);
-      
-      const completed = new Set(progressData?.map(p => p.lesson_id) || []);
-      setCompletedLessons(completed);
+      const hasStructure = sectionsData && sectionsData.length > 0;
+      setHasStructuredContent(hasStructure);
 
-      // Calculate progress percentage
-      const totalLessons = lessonsData?.length || 0;
-      const completedCount = completed.size;
-      const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-      setCourseProgress(progress);
+      if (hasStructure) {
+        // Fetch user progress for subsections
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_progress')
+          .select('subsection_id, completed_at')
+          .eq('course_id', courseId)
+          .eq('user_id', user.id)
+          .not('completed_at', 'is', null);
+
+        if (progressError && progressError.code !== 'PGRST116') {
+          throw progressError;
+        }
+
+        const completed = new Set(progressData?.map(p => p.subsection_id).filter(Boolean) || []);
+        setCompletedItems(completed);
+
+        // TODO: Calculate proper progress for sections/subsections
+        setCourseProgress(0);
+      } else {
+        // Fallback to old lessons structure
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from('lessons')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('order_index', { ascending: true });
+
+        if (lessonsError) throw lessonsError;
+        setLessons(lessonsData || []);
+
+        // Fetch user progress for lessons
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_progress')
+          .select('lesson_id, completed_at')
+          .eq('course_id', courseId)
+          .eq('user_id', user.id)
+          .not('completed_at', 'is', null);
+
+        if (progressError && progressError.code !== 'PGRST116') {
+          throw progressError;
+        }
+
+        const completed = new Set(progressData?.map(p => p.lesson_id).filter(Boolean) || []);
+        setCompletedItems(completed);
+
+        // Calculate progress percentage
+        const totalLessons = lessonsData?.length || 0;
+        const completedCount = completed.size;
+        const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+        setCourseProgress(progress);
+      }
 
     } catch (error) {
       console.error('Error fetching course data:', error);
@@ -108,7 +144,15 @@ const CoursePage = () => {
     
     // Check if previous lesson is completed
     const previousLesson = lessons[lessonIndex - 1];
-    return previousLesson ? completedLessons.has(previousLesson.id) : false;
+    return previousLesson ? completedItems.has(previousLesson.id) : false;
+  };
+
+  const getTotalItems = () => {
+    return hasStructuredContent ? 0 : lessons.length; // TODO: Calculate for sections/subsections
+  };
+
+  const getCompletedCount = () => {
+    return completedItems.size;
   };
 
   if (loading) {
@@ -157,12 +201,14 @@ const CoursePage = () => {
                   Level {course.level}
                 </Badge>
                 <Badge variant="secondary">
-                  {lessons.length} Lessons
+                  {hasStructuredContent ? 'Structured Course' : `${lessons.length} Lessons`}
                 </Badge>
-                <Badge variant="outline">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {getTotalDuration()} min
-                </Badge>
+                {!hasStructuredContent && (
+                  <Badge variant="outline">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {getTotalDuration()} min
+                  </Badge>
+                )}
               </div>
 
               <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
@@ -184,7 +230,7 @@ const CoursePage = () => {
                 <CardContent>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
-                      {completedLessons.size} of {lessons.length} lessons completed
+                      {getCompletedCount()} of {hasStructuredContent ? 'sections' : getTotalItems()} {hasStructuredContent ? 'items' : 'lessons'} completed
                     </span>
                     <span className="text-sm font-medium">{courseProgress}%</span>
                   </div>
@@ -196,113 +242,120 @@ const CoursePage = () => {
         </div>
 
         {/* Course Overview Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <BookOpen className="h-8 w-8 text-primary mr-4" />
-              <div>
-                <p className="text-2xl font-bold">{lessons.length}</p>
-                <p className="text-sm text-muted-foreground">Total Lessons</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <Clock className="h-8 w-8 text-info mr-4" />
-              <div>
-                <p className="text-2xl font-bold">{getTotalDuration()}</p>
-                <p className="text-sm text-muted-foreground">Minutes</p>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="flex items-center p-6">
-              <CheckCircle className="h-8 w-8 text-success mr-4" />
-              <div>
-                <p className="text-2xl font-bold">{completedLessons.size}</p>
-                <p className="text-sm text-muted-foreground">Completed</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {!hasStructuredContent && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardContent className="flex items-center p-6">
+                <BookOpen className="h-8 w-8 text-primary mr-4" />
+                <div>
+                  <p className="text-2xl font-bold">{lessons.length}</p>
+                  <p className="text-sm text-muted-foreground">Total Lessons</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="flex items-center p-6">
+                <Clock className="h-8 w-8 text-info mr-4" />
+                <div>
+                  <p className="text-2xl font-bold">{getTotalDuration()}</p>
+                  <p className="text-sm text-muted-foreground">Minutes</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="flex items-center p-6">
+                <CheckCircle className="h-8 w-8 text-success mr-4" />
+                <div>
+                  <p className="text-2xl font-bold">{completedItems.size}</p>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        {/* Lessons List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Course Lessons
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {lessons.map((lesson, index) => {
-              const isCompleted = completedLessons.has(lesson.id);
-              const isAccessible = isLessonAccessible(index);
-              
-              return (
-                <div key={lesson.id}>
-                  <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                    isAccessible 
-                      ? 'hover:bg-accent/50 cursor-pointer' 
-                      : 'opacity-60 cursor-not-allowed bg-muted/30'
-                  }`}>
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                        isCompleted 
-                          ? 'bg-success text-success-foreground' 
-                          : isAccessible 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {isCompleted ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          <span className="text-sm font-medium">{index + 1}</span>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <h3 className={`font-medium ${!isAccessible ? 'text-muted-foreground' : ''}`}>
-                          {lesson.title}
-                        </h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {lesson.duration_minutes} min
-                          </span>
-                          {isCompleted && (
-                            <Badge variant="outline" className="text-xs text-success border-success">
-                              Completed
-                            </Badge>
-                          )}
-                          {!isAccessible && !isCompleted && (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              Locked
-                            </Badge>
+        {/* Course Content */}
+        {hasStructuredContent ? (
+          <CourseStructure courseId={courseId!} />
+        ) : (
+          /* Lessons List - Fallback for old structure */
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Course Lessons
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {lessons.map((lesson, index) => {
+                const isCompleted = completedItems.has(lesson.id);
+                const isAccessible = isLessonAccessible(index);
+                
+                return (
+                  <div key={lesson.id}>
+                    <div className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                      isAccessible 
+                        ? 'hover:bg-accent/50 cursor-pointer' 
+                        : 'opacity-60 cursor-not-allowed bg-muted/30'
+                    }`}>
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                          isCompleted 
+                            ? 'bg-success text-success-foreground' 
+                            : isAccessible 
+                            ? 'bg-primary text-primary-foreground' 
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            <span className="text-sm font-medium">{index + 1}</span>
                           )}
                         </div>
+                        
+                        <div className="flex-1">
+                          <h3 className={`font-medium ${!isAccessible ? 'text-muted-foreground' : ''}`}>
+                            {lesson.title}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {lesson.duration_minutes} min
+                            </span>
+                            {isCompleted && (
+                              <Badge variant="outline" className="text-xs text-success border-success">
+                                Completed
+                              </Badge>
+                            )}
+                            {!isAccessible && !isCompleted && (
+                              <Badge variant="outline" className="text-xs text-muted-foreground">
+                                Locked
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
+                      
+                      <Button
+                        variant={isCompleted ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => isAccessible && handleStartLesson(lesson.id)}
+                        disabled={!isAccessible}
+                      >
+                        {isCompleted ? "Review" : "Start"}
+                        <Play className="h-3 w-3 ml-1" />
+                      </Button>
                     </div>
                     
-                    <Button
-                      variant={isCompleted ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => isAccessible && handleStartLesson(lesson.id)}
-                      disabled={!isAccessible}
-                    >
-                      {isCompleted ? "Review" : "Start"}
-                      <Play className="h-3 w-3 ml-1" />
-                    </Button>
+                    {index < lessons.length - 1 && <Separator className="my-2" />}
                   </div>
-                  
-                  {index < lessons.length - 1 && <Separator className="my-2" />}
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
