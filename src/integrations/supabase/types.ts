@@ -21,7 +21,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           is_edited: boolean
-          lesson_id: string
+          lesson_id: string | null
           parent_comment_id: string | null
           subsection_id: string | null
           updated_at: string
@@ -33,7 +33,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           is_edited?: boolean
-          lesson_id: string
+          lesson_id?: string | null
           parent_comment_id?: string | null
           subsection_id?: string | null
           updated_at?: string
@@ -45,7 +45,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           is_edited?: boolean
-          lesson_id?: string
+          lesson_id?: string | null
           parent_comment_id?: string | null
           subsection_id?: string | null
           updated_at?: string
