@@ -61,25 +61,35 @@ export const SubsectionPage = () => {
       });
       setSection(section);
 
-      // Optimized: Get navigation data more efficiently
-      // Fetch all subsections for the course (needed for navigation)
+      // Optimized: Get navigation data - use simpler approach to avoid ordering issues
+      const { data: sectionsData, error: sectionsError } = await supabase
+        .from('sections')
+        .select('id, order_index')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true });
+
+      if (sectionsError) throw sectionsError;
+
       const { data: navigationData, error: navigationError } = await supabase
         .from('subsections')
-        .select(`
-          *,
-          sections!inner (
-            id,
-            course_id,
-            order_index
-          )
-        `)
-        .eq('sections.course_id', courseId)
-        .order('sections.order_index', { ascending: true })
+        .select('*')
+        .in('section_id', sectionsData.map(s => s.id))
         .order('order_index', { ascending: true });
 
       if (navigationError) throw navigationError;
 
-      setAllSubsections((navigationData || []).map(subsection => ({
+      // Sort subsections by section order, then by subsection order
+      const sortedSubsections = navigationData.sort((a, b) => {
+        const sectionA = sectionsData.find(s => s.id === a.section_id);
+        const sectionB = sectionsData.find(s => s.id === b.section_id);
+        
+        if (sectionA.order_index !== sectionB.order_index) {
+          return sectionA.order_index - sectionB.order_index;
+        }
+        return a.order_index - b.order_index;
+      });
+
+      setAllSubsections(sortedSubsections.map(subsection => ({
         ...subsection,
         subsection_type: subsection.subsection_type as 'content' | 'quiz'
       })));

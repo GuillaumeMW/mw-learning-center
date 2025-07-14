@@ -50,18 +50,10 @@ export const CommentThread = ({ lessonId, subsectionId, className = "" }: Commen
   const fetchComments = async () => {
     const startTime = performance.now();
     try {
-      // Optimized: Single query with joins to fetch comments and profiles together
+      // Build query based on which ID is provided
       let query = supabase
         .from('comments')
-        .select(`
-          *,
-          profiles!inner (
-            user_id,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
@@ -85,8 +77,31 @@ export const CommentThread = ({ lessonId, subsectionId, className = "" }: Commen
         return;
       }
 
-      // Organize comments into threads (profiles already joined)
-      const threadedComments = organizeComments(commentsData);
+      // Get unique user IDs from comments
+      const userIds = [...new Set(commentsData.map(comment => comment.user_id))];
+
+      // Fetch profile information for all users in a single query
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, avatar_url')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of user profiles for easy lookup
+      const profilesMap = new Map();
+      profilesData?.forEach(profile => {
+        profilesMap.set(profile.user_id, profile);
+      });
+
+      // Merge comments with profile data
+      const commentsWithProfiles = commentsData.map(comment => ({
+        ...comment,
+        profiles: profilesMap.get(comment.user_id)
+      }));
+
+      // Organize comments into threads
+      const threadedComments = organizeComments(commentsWithProfiles);
       setComments(threadedComments);
 
       // Performance monitoring
