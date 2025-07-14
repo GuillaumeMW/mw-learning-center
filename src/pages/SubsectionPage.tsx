@@ -38,52 +38,53 @@ export const SubsectionPage = () => {
   }, [subsectionId, courseId, user]);
 
   const fetchSubsectionData = async () => {
+    const startTime = performance.now();
     try {
-      // Fetch current subsection
+      // Optimized: Single query to fetch subsection with section info using joins
       const { data: subsectionData, error: subsectionError } = await supabase
         .from('subsections')
-        .select('*')
+        .select(`
+          *,
+          sections!inner (
+            *
+          )
+        `)
         .eq('id', subsectionId)
         .single();
 
       if (subsectionError) throw subsectionError;
+      
+      const section = subsectionData.sections;
       setSubsection({
         ...subsectionData,
         subsection_type: subsectionData.subsection_type as 'content' | 'quiz'
       });
+      setSection(section);
 
-      // Fetch section information
-      const { data: sectionData, error: sectionError } = await supabase
-        .from('sections')
-        .select('*')
-        .eq('id', subsectionData.section_id)
-        .single();
-
-      if (sectionError) throw sectionError;
-      setSection(sectionData);
-
-      // Fetch all subsections for the course for navigation
-      const { data: allSectionsData, error: sectionsError } = await supabase
-        .from('sections')
-        .select('id')
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
-
-      if (sectionsError) throw sectionsError;
-
-      const { data: allSubsectionsData, error: allSubsectionsError } = await supabase
+      // Optimized: Get navigation data more efficiently
+      // Fetch all subsections for the course (needed for navigation)
+      const { data: navigationData, error: navigationError } = await supabase
         .from('subsections')
-        .select('*')
-        .in('section_id', allSectionsData.map(s => s.id))
+        .select(`
+          *,
+          sections!inner (
+            id,
+            course_id,
+            order_index
+          )
+        `)
+        .eq('sections.course_id', courseId)
+        .order('sections.order_index', { ascending: true })
         .order('order_index', { ascending: true });
 
-      if (allSubsectionsError) throw allSubsectionsError;
-      setAllSubsections((allSubsectionsData || []).map(subsection => ({
+      if (navigationError) throw navigationError;
+
+      setAllSubsections((navigationData || []).map(subsection => ({
         ...subsection,
         subsection_type: subsection.subsection_type as 'content' | 'quiz'
       })));
 
-      // Check completion status
+      // Optimized: Check completion status only if user exists
       if (user) {
         const { data: progressData, error: progressError } = await supabase
           .from('user_progress')
@@ -95,6 +96,10 @@ export const SubsectionPage = () => {
         if (progressError) throw progressError;
         setIsCompleted(!!progressData?.completed_at);
       }
+
+      // Performance monitoring
+      const endTime = performance.now();
+      console.log(`SubsectionPage data fetch took ${endTime - startTime} milliseconds`);
     } catch (error) {
       console.error('Error fetching subsection data:', error);
       toast({
