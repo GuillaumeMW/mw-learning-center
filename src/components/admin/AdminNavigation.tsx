@@ -21,8 +21,8 @@ const navigationItems = [
     description: 'Manage users and roles'
   },
   {
-    name: 'Courses',
-    href: '/admin/courses',
+    name: 'Content',
+    href: '/admin/content',
     icon: BookOpen,
     description: 'Manage course content'
   },
