@@ -392,6 +392,7 @@ const ContentManagement = () => {
     );
   }
 
+  // Force refresh to clear cache
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
