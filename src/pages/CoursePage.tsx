@@ -69,6 +69,21 @@ const CoursePage = () => {
       setHasStructuredContent(hasStructure);
 
       if (hasStructure) {
+        // Fetch subsections to calculate total count
+        const { data: subsectionsData, error: subsectionsError } = await supabase
+          .from('subsections')
+          .select('id, section_id')
+          .in('section_id', await supabase
+            .from('sections')
+            .select('id')
+            .eq('course_id', courseId)
+            .then(res => res.data?.map(s => s.id) || [])
+          );
+
+        if (subsectionsError && subsectionsError.code !== 'PGRST116') {
+          throw subsectionsError;
+        }
+
         // Fetch user progress for subsections
         const { data: progressData, error: progressError } = await supabase
           .from('user_progress')
@@ -84,8 +99,11 @@ const CoursePage = () => {
         const completed = new Set(progressData?.map(p => p.subsection_id).filter(Boolean) || []);
         setCompletedItems(completed);
 
-        // TODO: Calculate proper progress for sections/subsections
-        setCourseProgress(0);
+        // Calculate progress for sections/subsections
+        const totalSubsections = subsectionsData?.length || 0;
+        const completedCount = completed.size;
+        const progress = totalSubsections > 0 ? Math.round((completedCount / totalSubsections) * 100) : 0;
+        setCourseProgress(progress);
       } else {
         // Fallback to old lessons structure
         const { data: lessonsData, error: lessonsError } = await supabase
@@ -148,7 +166,11 @@ const CoursePage = () => {
   };
 
   const getTotalItems = () => {
-    return hasStructuredContent ? 0 : lessons.length; // TODO: Calculate for sections/subsections
+    if (hasStructuredContent) {
+      // Calculate total subsections across all sections
+      return sections.reduce((total, section) => total + (section.subsections?.length || 0), 0);
+    }
+    return lessons.length;
   };
 
   const getCompletedCount = () => {
