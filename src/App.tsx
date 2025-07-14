@@ -13,6 +13,7 @@ import CoursePage from "./pages/CoursePage";
 import LessonPage from "./pages/LessonPage";
 import { SubsectionPage } from "./pages/SubsectionPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import UsersManagement from "./pages/admin/UsersManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
                     <AdminLayout>
                       <Routes>
                         <Route index element={<AdminDashboard />} />
+                        <Route path="users" element={<UsersManagement />} />
                         {/* Future admin routes will go here */}
                       </Routes>
                     </AdminLayout>
