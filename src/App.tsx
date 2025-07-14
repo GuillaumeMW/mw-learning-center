@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import UsersManagement from "./pages/admin/UsersManagement";
 import UserDetail from "./pages/admin/UserDetail";
 import ContentManagement from "./pages/admin/ContentManagement";
+import SubsectionEditor from "./pages/admin/SubsectionEditor";
 import ProgressAnalytics from "./pages/admin/ProgressAnalytics";
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,7 @@ const App = () => (
                         <Route path="users" element={<UsersManagement />} />
                         <Route path="users/:userId" element={<UserDetail />} />
                         <Route path="content" element={<ContentManagement />} />
+                        <Route path="content/subsection/:sectionId" element={<SubsectionEditor />} />
                         <Route path="analytics" element={<ProgressAnalytics />} />
                         {/* Future admin routes will go here */}
                       </Routes>

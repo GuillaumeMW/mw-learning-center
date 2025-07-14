@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Course, Section, Subsection } from '@/types/course';
@@ -57,16 +58,6 @@ interface SectionFormData {
   order_index: number;
 }
 
-interface SubsectionFormData {
-  title: string;
-  content: string;
-  video_url: string;
-  section_id: string;
-  subsection_type: 'content' | 'quiz';
-  order_index: number;
-  duration_minutes: number;
-}
-
 const ContentManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -76,11 +67,10 @@ const ContentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingSection, setEditingSection] = useState<Section | null>(null);
-  const [editingSubsection, setEditingSubsection] = useState<Subsection | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
-  const [showSubsectionForm, setShowSubsectionForm] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [courseForm, setCourseForm] = useState<CourseFormData>({
     title: '',
@@ -95,16 +85,6 @@ const ContentManagement = () => {
     description: '',
     course_id: '',
     order_index: 0
-  });
-
-  const [subsectionForm, setSubsectionForm] = useState<SubsectionFormData>({
-    title: '',
-    content: '',
-    video_url: '',
-    section_id: '',
-    subsection_type: 'content',
-    order_index: 0,
-    duration_minutes: 0
   });
 
   useEffect(() => {
@@ -278,55 +258,6 @@ const ContentManagement = () => {
     }
   };
 
-  const handleSubsectionSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      const formData = {
-        ...subsectionForm,
-        section_id: selectedSection,
-        order_index: subsections.length
-      };
-
-      if (editingSubsection) {
-        const { error } = await supabase
-          .from('subsections')
-          .update(formData)
-          .eq('id', editingSubsection.id);
-
-        if (error) throw error;
-        toast({ title: 'Success', description: 'Subsection updated successfully' });
-      } else {
-        const { error } = await supabase
-          .from('subsections')
-          .insert([formData]);
-
-        if (error) throw error;
-        toast({ title: 'Success', description: 'Subsection created successfully' });
-      }
-
-      setShowSubsectionForm(false);
-      setEditingSubsection(null);
-      setSubsectionForm({
-        title: '',
-        content: '',
-        video_url: '',
-        section_id: '',
-        subsection_type: 'content',
-        order_index: 0,
-        duration_minutes: 0
-      });
-      fetchSubsections();
-    } catch (error) {
-      console.error('Error saving subsection:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save subsection',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const handleEditCourse = (course: Course) => {
     setEditingCourse(course);
     setCourseForm({
@@ -350,18 +281,12 @@ const ContentManagement = () => {
     setShowSectionForm(true);
   };
 
+  const handleCreateSubsection = () => {
+    navigate(`/admin/content/subsection/${selectedSection}`);
+  };
+
   const handleEditSubsection = (subsection: Subsection) => {
-    setEditingSubsection(subsection);
-    setSubsectionForm({
-      title: subsection.title,
-      content: subsection.content || '',
-      video_url: subsection.video_url || '',
-      section_id: subsection.section_id,
-      subsection_type: subsection.subsection_type,
-      order_index: subsection.order_index,
-      duration_minutes: subsection.duration_minutes || 0
-    });
-    setShowSubsectionForm(true);
+    navigate(`/admin/content/subsection/${subsection.section_id}?subsectionId=${subsection.id}`);
   };
 
   const handleDeleteCourse = async (courseId: string) => {
@@ -657,7 +582,7 @@ const ContentManagement = () => {
                     </SelectContent>
                   </Select>
                   <Button 
-                    onClick={() => setShowSubsectionForm(true)}
+                    onClick={handleCreateSubsection}
                     disabled={!selectedSection}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -853,78 +778,6 @@ const ContentManagement = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Subsection Form Dialog */}
-      <Dialog open={showSubsectionForm} onOpenChange={setShowSubsectionForm}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingSubsection ? 'Edit Subsection' : 'Add New Subsection'}
-            </DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubsectionSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="subsection-title">Subsection Title</Label>
-              <Input
-                id="subsection-title"
-                value={subsectionForm.title}
-                onChange={(e) => setSubsectionForm({ ...subsectionForm, title: e.target.value })}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="subsection-type">Type</Label>
-                <Select value={subsectionForm.subsection_type} onValueChange={(value: 'content' | 'quiz') => setSubsectionForm({ ...subsectionForm, subsection_type: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="content">Content</SelectItem>
-                    <SelectItem value="quiz">Quiz</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  value={subsectionForm.duration_minutes}
-                  onChange={(e) => setSubsectionForm({ ...subsectionForm, duration_minutes: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="video-url">Video URL (optional)</Label>
-              <Input
-                id="video-url"
-                value={subsectionForm.video_url}
-                onChange={(e) => setSubsectionForm({ ...subsectionForm, video_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-            <div>
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                value={subsectionForm.content}
-                onChange={(e) => setSubsectionForm({ ...subsectionForm, content: e.target.value })}
-                rows={6}
-                placeholder="Enter the content for this subsection..."
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setShowSubsectionForm(false)}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                <Save className="h-4 w-4 mr-2" />
-                {editingSubsection ? 'Update' : 'Create'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
