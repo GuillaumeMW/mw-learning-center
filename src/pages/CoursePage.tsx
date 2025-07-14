@@ -33,6 +33,7 @@ const CoursePage = () => {
   const [loading, setLoading] = useState(true);
   const [courseProgress, setCourseProgress] = useState(0);
   const [hasStructuredContent, setHasStructuredContent] = useState(false);
+  const [totalItemsCount, setTotalItemsCount] = useState(0);
 
   useEffect(() => {
     if (courseId && user) {
@@ -104,6 +105,7 @@ const CoursePage = () => {
         const completedCount = completed.size;
         const progress = totalSubsections > 0 ? Math.round((completedCount / totalSubsections) * 100) : 0;
         setCourseProgress(progress);
+        setTotalItemsCount(totalSubsections);
       } else {
         // Fallback to old lessons structure
         const { data: lessonsData, error: lessonsError } = await supabase
@@ -135,6 +137,7 @@ const CoursePage = () => {
         const completedCount = completed.size;
         const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
         setCourseProgress(progress);
+        setTotalItemsCount(totalLessons);
       }
 
     } catch (error) {
@@ -166,11 +169,7 @@ const CoursePage = () => {
   };
 
   const getTotalItems = () => {
-    if (hasStructuredContent) {
-      // Calculate total subsections across all sections
-      return sections.reduce((total, section) => total + (section.subsections?.length || 0), 0);
-    }
-    return lessons.length;
+    return totalItemsCount;
   };
 
   const getCompletedCount = () => {
@@ -252,7 +251,7 @@ const CoursePage = () => {
                 <CardContent>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">
-                      {getCompletedCount()} of {hasStructuredContent ? 'sections' : getTotalItems()} {hasStructuredContent ? 'items' : 'lessons'} completed
+                      {getCompletedCount()} of {getTotalItems()} {hasStructuredContent ? 'items' : 'lessons'} completed
                     </span>
                     <span className="text-sm font-medium">{courseProgress}%</span>
                   </div>
