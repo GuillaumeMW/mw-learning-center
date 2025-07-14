@@ -64,14 +64,6 @@ const ProgressAnalytics = () => {
 
   const fetchProgressData = async () => {
     try {
-      // Get all progress data
-      const { data: progressData, error: progressError } = await supabase
-        .from('user_progress')
-        .select('user_id, course_id, progress_percentage, completed_at, updated_at')
-        .order('updated_at', { ascending: false });
-
-      if (progressError) throw progressError;
-
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -115,29 +107,49 @@ const ProgressAnalytics = () => {
         return acc;
       }, {} as Record<string, number>);
 
-      // Process the data
-      const processedData: ProgressData[] = progressData.map(item => {
-        const profile = profiles.find(p => p.user_id === item.user_id);
-        const course = courses.find(c => c.id === item.course_id);
-        const totalSubsections = courseCounts[item.course_id] || 0;
-        const completedSubsections = userCompletions[`${item.user_id}-${item.course_id}`] || 0;
+      // Get latest activity per user/course
+      const { data: latestActivity, error: activityError } = await supabase
+        .from('user_progress')
+        .select('user_id, course_id, updated_at, completed_at')
+        .order('updated_at', { ascending: false });
+
+      if (activityError) throw activityError;
+
+      // Group by user-course and get the latest activity
+      const userCourseActivity = latestActivity.reduce((acc, prog) => {
+        const key = `${prog.user_id}-${prog.course_id}`;
+        if (!acc[key] || new Date(prog.updated_at) > new Date(acc[key].updated_at)) {
+          acc[key] = prog;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      // Process the data - one row per user-course combination
+      const processedData: ProgressData[] = [];
+      
+      for (const [key, activity] of Object.entries(userCourseActivity)) {
+        const [user_id, course_id] = key.split('-');
+        const profile = profiles.find(p => p.user_id === user_id);
+        const course = courses.find(c => c.id === course_id);
+        const totalSubsections = courseCounts[course_id] || 0;
+        const completedSubsections = userCompletions[key] || 0;
         const actualProgress = totalSubsections > 0 ? (completedSubsections / totalSubsections) * 100 : 0;
 
-        return {
-          user_id: item.user_id,
+        processedData.push({
+          user_id,
           user_name: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown User',
-          user_email: 'N/A', // We'll get this separately if needed
-          course_id: item.course_id,
+          user_email: 'N/A',
+          course_id,
           course_title: course?.title || 'Unknown Course',
           course_level: course?.level || 0,
           total_subsections: totalSubsections,
           completed_subsections: completedSubsections,
           progress_percentage: actualProgress,
-          last_activity: item.updated_at,
-          completion_date: item.completed_at,
+          last_activity: activity.updated_at,
+          completion_date: actualProgress === 100 ? activity.updated_at : null,
           employment_status: profile?.employment_status || 'N/A'
-        };
-      });
+        });
+      }
 
       setProgressData(processedData);
     } catch (error) {
@@ -183,21 +195,23 @@ const ProgressAnalytics = () => {
         .from('course_completions')
         .select('*', { count: 'exact' });
 
-      // Get active users in last 30 days
+      // Get active users in last 30 days (count unique users)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { count: activeUsers } = await supabase
+      const { data: activeUsersData } = await supabase
         .from('user_progress')
-        .select('*', { count: 'exact' })
+        .select('user_id')
         .gte('updated_at', thirtyDaysAgo.toISOString());
+
+      const activeUsers = new Set(activeUsersData?.map(item => item.user_id) || []).size;
 
       setStats({
         total_users: totalUsers || 0,
         total_courses: totalCourses || 0,
         total_completions: totalCompletions || 0,
         average_completion_rate: totalUsers > 0 ? ((totalCompletions || 0) / totalUsers) * 100 : 0,
-        active_users_last_30_days: activeUsers || 0
+        active_users_last_30_days: activeUsers
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
