@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { 
   ArrowLeft, 
   Save, 
@@ -365,16 +365,14 @@ const SubsectionEditor = () => {
             {/* Content */}
             <div>
               <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
+              <RichTextEditor
                 value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                rows={12}
-                placeholder="Enter the main content for this subsection. This can include instructions, explanations, or any additional information..."
-                className="min-h-[300px]"
+                onChange={(value) => setFormData({ ...formData, content: value })}
+                placeholder="Enter the main content for this subsection. This can include instructions, explanations, formatting, links, and any additional information..."
+                className="mt-1"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                You can use this field for lesson content, quiz instructions, or additional information.
+                Use the toolbar above to format your content with headings, lists, links, and more.
               </p>
             </div>
 
