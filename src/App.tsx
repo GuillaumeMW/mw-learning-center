@@ -15,6 +15,7 @@ import { SubsectionPage } from "./pages/SubsectionPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UsersManagement from "./pages/admin/UsersManagement";
 import ContentManagement from "./pages/admin/ContentManagement";
+import ProgressAnalytics from "./pages/admin/ProgressAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const App = () => (
                         <Route index element={<AdminDashboard />} />
                         <Route path="users" element={<UsersManagement />} />
                         <Route path="content" element={<ContentManagement />} />
+                        <Route path="analytics" element={<ProgressAnalytics />} />
                         {/* Future admin routes will go here */}
                       </Routes>
                     </AdminLayout>
