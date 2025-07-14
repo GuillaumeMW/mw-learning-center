@@ -87,7 +87,7 @@ const AdminDashboard = () => {
       title: 'Manage Courses',
       description: 'Create and edit course content',
       icon: BookOpen,
-      href: '/admin/courses',
+      href: '/admin/content',
       color: 'text-green-600'
     },
     {
