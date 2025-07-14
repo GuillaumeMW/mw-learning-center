@@ -8,160 +8,239 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Search, Filter, TrendingUp, Users, BookOpen, Award } from 'lucide-react';
+import { Download, Search, Filter, TrendingUp, Users, BookOpen, Award, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface ProgressData {
-  user_id: string;
-  user_name: string;
-  user_email: string;
-  course_id: string;
+interface SectionAnalytics {
+  section_id: string;
+  section_title: string;
   course_title: string;
   course_level: number;
   total_subsections: number;
-  completed_subsections: number;
-  progress_percentage: number;
-  last_activity: string;
-  completion_date: string | null;
-  employment_status: string;
+  users_started: number;
+  users_completed: number;
+  completion_rate: number;
+  avg_completion_time_hours: number | null;
+}
+
+interface CourseAnalytics {
+  course_id: string;
+  course_title: string;
+  course_level: number;
+  total_sections: number;
+  users_started: number;
+  users_completed: number;
+  completion_rate: number;
+  avg_completion_time_hours: number | null;
 }
 
 interface AnalyticsStats {
   total_users: number;
   total_courses: number;
-  total_completions: number;
-  average_completion_rate: number;
+  total_sections: number;
+  total_course_completions: number;
   active_users_last_30_days: number;
 }
 
 const ProgressAnalytics = () => {
-  const [progressData, setProgressData] = useState<ProgressData[]>([]);
-  const [filteredData, setFilteredData] = useState<ProgressData[]>([]);
+  const [sectionAnalytics, setSectionAnalytics] = useState<SectionAnalytics[]>([]);
+  const [courseAnalytics, setCourseAnalytics] = useState<CourseAnalytics[]>([]);
+  const [filteredSections, setFilteredSections] = useState<SectionAnalytics[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<CourseAnalytics[]>([]);
   const [stats, setStats] = useState<AnalyticsStats>({
     total_users: 0,
     total_courses: 0,
-    total_completions: 0,
-    average_completion_rate: 0,
+    total_sections: 0,
+    total_course_completions: 0,
     active_users_last_30_days: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [employmentFilter, setEmploymentFilter] = useState('all');
+  const [viewType, setViewType] = useState<'sections' | 'courses'>('sections');
   const [courses, setCourses] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProgressData();
+    fetchAnalyticsData();
     fetchCourses();
     fetchStats();
   }, []);
 
   useEffect(() => {
     filterData();
-  }, [progressData, searchTerm, courseFilter, statusFilter, employmentFilter]);
+  }, [sectionAnalytics, courseAnalytics, searchTerm, courseFilter, viewType]);
 
-  const fetchProgressData = async () => {
+  const fetchAnalyticsData = async () => {
     try {
-      // Get all profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, employment_status');
-
-      if (profilesError) throw profilesError;
-
-      // Get all courses
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select('id, title, level');
-
-      if (coursesError) throw coursesError;
-
-      // Get subsection counts for each course
-      const { data: subsectionCounts, error: subsectionError } = await supabase
-        .from('subsections')
-        .select('id, section_id, sections!inner(course_id)');
-
-      if (subsectionError) throw subsectionError;
-
-      // Count subsections per course
-      const courseCounts = subsectionCounts.reduce((acc, sub) => {
-        const courseId = (sub.sections as any).course_id;
-        acc[courseId] = (acc[courseId] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Get completed subsections for each user/course
-      const { data: completedSubsections, error: completedError } = await supabase
-        .from('user_progress')
-        .select('user_id, course_id, subsection_id')
-        .not('completed_at', 'is', null)
-        .not('subsection_id', 'is', null);
-
-      if (completedError) throw completedError;
-
-      const userCompletions = completedSubsections.reduce((acc, prog) => {
-        const key = `${prog.user_id}-${prog.course_id}`;
-        acc[key] = (acc[key] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      // Get latest activity per user/course
-      const { data: latestActivity, error: activityError } = await supabase
-        .from('user_progress')
-        .select('user_id, course_id, updated_at, completed_at')
-        .order('updated_at', { ascending: false });
-
-      if (activityError) throw activityError;
-
-      // Group by user-course and get the latest activity
-      const userCourseActivity = latestActivity.reduce((acc, prog) => {
-        const key = `${prog.user_id}-${prog.course_id}`;
-        if (!acc[key] || new Date(prog.updated_at) > new Date(acc[key].updated_at)) {
-          acc[key] = prog;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-
-      // Process the data - one row per user-course combination
-      const processedData: ProgressData[] = [];
-      
-      for (const [key, activity] of Object.entries(userCourseActivity)) {
-        const [user_id, course_id] = key.split('-');
-        const profile = profiles.find(p => p.user_id === user_id);
-        const course = courses.find(c => c.id === course_id);
-        const totalSubsections = courseCounts[course_id] || 0;
-        const completedSubsections = userCompletions[key] || 0;
-        const actualProgress = totalSubsections > 0 ? (completedSubsections / totalSubsections) * 100 : 0;
-
-        processedData.push({
-          user_id,
-          user_name: profile ? `${profile.first_name} ${profile.last_name}` : 'Unknown User',
-          user_email: 'N/A',
-          course_id,
-          course_title: course?.title || 'Unknown Course',
-          course_level: course?.level || 0,
-          total_subsections: totalSubsections,
-          completed_subsections: completedSubsections,
-          progress_percentage: actualProgress,
-          last_activity: activity.updated_at,
-          completion_date: actualProgress === 100 ? activity.updated_at : null,
-          employment_status: profile?.employment_status || 'N/A'
-        });
-      }
-
-      setProgressData(processedData);
+      // Fetch section analytics
+      await fetchSectionAnalytics();
+      // Fetch course analytics
+      await fetchCourseAnalytics();
     } catch (error) {
-      console.error('Error fetching progress data:', error);
+      console.error('Error fetching analytics data:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch progress data",
+        description: "Failed to fetch analytics data",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchSectionAnalytics = async () => {
+    // Get all sections with their courses
+    const { data: sections, error: sectionsError } = await supabase
+      .from('sections')
+      .select(`
+        id,
+        title,
+        course_id,
+        courses!inner(title, level),
+        subsections(id)
+      `)
+      .order('order_index');
+
+    if (sectionsError) throw sectionsError;
+
+    // Get section progress data
+    const sectionData: SectionAnalytics[] = [];
+
+    for (const section of sections) {
+      const subsectionIds = section.subsections.map((sub: any) => sub.id);
+      
+      // Get users who started this section (have progress on any subsection)
+      const { data: startedUsers, error: startedError } = await supabase
+        .from('user_progress')
+        .select('user_id, created_at, completed_at')
+        .in('subsection_id', subsectionIds);
+
+      if (startedError) throw startedError;
+
+      const uniqueStartedUsers = new Set(startedUsers.map(p => p.user_id));
+      
+      // Get users who completed ALL subsections in this section
+      const { data: completedSubsections, error: completedError } = await supabase
+        .from('user_progress')
+        .select('user_id, subsection_id, completed_at')
+        .in('subsection_id', subsectionIds)
+        .not('completed_at', 'is', null);
+
+      if (completedError) throw completedError;
+
+      // Count completed subsections per user
+      const userCompletions = completedSubsections.reduce((acc, prog) => {
+        if (!acc[prog.user_id]) acc[prog.user_id] = [];
+        acc[prog.user_id].push(prog.subsection_id);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // Users who completed ALL subsections in this section
+      const completedUsers = Object.keys(userCompletions).filter(
+        userId => userCompletions[userId].length === subsectionIds.length
+      );
+
+      // Calculate average completion time
+      let avgCompletionTime = null;
+      if (completedUsers.length > 0) {
+        const completionTimes = [];
+        for (const userId of completedUsers) {
+          const userProgress = startedUsers.filter(p => p.user_id === userId);
+          if (userProgress.length > 0) {
+            const startTime = new Date(Math.min(...userProgress.map(p => new Date(p.created_at).getTime())));
+            const endTime = new Date(Math.max(...userProgress.map(p => new Date(p.completed_at).getTime())));
+            const timeDiff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // hours
+            completionTimes.push(timeDiff);
+          }
+        }
+        if (completionTimes.length > 0) {
+          avgCompletionTime = completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length;
+        }
+      }
+
+      sectionData.push({
+        section_id: section.id,
+        section_title: section.title,
+        course_title: (section.courses as any).title,
+        course_level: (section.courses as any).level,
+        total_subsections: subsectionIds.length,
+        users_started: uniqueStartedUsers.size,
+        users_completed: completedUsers.length,
+        completion_rate: uniqueStartedUsers.size > 0 ? (completedUsers.length / uniqueStartedUsers.size) * 100 : 0,
+        avg_completion_time_hours: avgCompletionTime
+      });
+    }
+
+    setSectionAnalytics(sectionData);
+  };
+
+  const fetchCourseAnalytics = async () => {
+    // Get all courses with their sections
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select(`
+        id,
+        title,
+        level,
+        sections(id)
+      `)
+      .order('level');
+
+    if (coursesError) throw coursesError;
+
+    const courseData: CourseAnalytics[] = [];
+
+    for (const course of courses) {
+      // Get users who started this course (have any progress)
+      const { data: startedUsers, error: startedError } = await supabase
+        .from('user_progress')
+        .select('user_id, created_at')
+        .eq('course_id', course.id);
+
+      if (startedError) throw startedError;
+
+      const uniqueStartedUsers = new Set(startedUsers.map(p => p.user_id));
+
+      // Get users who completed this course
+      const { data: completedUsers, error: completedError } = await supabase
+        .from('course_completions')
+        .select('user_id, completed_at')
+        .eq('course_id', course.id);
+
+      if (completedError) throw completedError;
+
+      // Calculate average completion time for completed users
+      let avgCompletionTime = null;
+      if (completedUsers.length > 0) {
+        const completionTimes = [];
+        for (const completion of completedUsers) {
+          const userStarted = startedUsers.find(p => p.user_id === completion.user_id);
+          if (userStarted) {
+            const startTime = new Date(userStarted.created_at);
+            const endTime = new Date(completion.completed_at);
+            const timeDiff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60); // hours
+            completionTimes.push(timeDiff);
+          }
+        }
+        if (completionTimes.length > 0) {
+          avgCompletionTime = completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length;
+        }
+      }
+
+      courseData.push({
+        course_id: course.id,
+        course_title: course.title,
+        course_level: course.level,
+        total_sections: course.sections.length,
+        users_started: uniqueStartedUsers.size,
+        users_completed: completedUsers.length,
+        completion_rate: uniqueStartedUsers.size > 0 ? (completedUsers.length / uniqueStartedUsers.size) * 100 : 0,
+        avg_completion_time_hours: avgCompletionTime
+      });
+    }
+
+    setCourseAnalytics(courseData);
   };
 
   const fetchCourses = async () => {
@@ -172,7 +251,7 @@ const ProgressAnalytics = () => {
         .order('level');
 
       if (error) throw error;
-      setCourses(data);
+      setCourses(data || []);
     } catch (error) {
       console.error('Error fetching courses:', error);
     }
@@ -190,12 +269,17 @@ const ProgressAnalytics = () => {
         .from('courses')
         .select('*', { count: 'exact' });
 
-      // Get total completions
+      // Get total sections
+      const { count: totalSections } = await supabase
+        .from('sections')
+        .select('*', { count: 'exact' });
+
+      // Get total course completions
       const { count: totalCompletions } = await supabase
         .from('course_completions')
         .select('*', { count: 'exact' });
 
-      // Get active users in last 30 days (count unique users)
+      // Get active users in last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -209,8 +293,8 @@ const ProgressAnalytics = () => {
       setStats({
         total_users: totalUsers || 0,
         total_courses: totalCourses || 0,
-        total_completions: totalCompletions || 0,
-        average_completion_rate: totalUsers > 0 ? ((totalCompletions || 0) / totalUsers) * 100 : 0,
+        total_sections: totalSections || 0,
+        total_course_completions: totalCompletions || 0,
         active_users_last_30_days: activeUsers
       });
     } catch (error) {
@@ -219,69 +303,67 @@ const ProgressAnalytics = () => {
   };
 
   const filterData = () => {
-    let filtered = progressData;
+    if (viewType === 'sections') {
+      let filtered = sectionAnalytics;
 
-    // Search filter
-    if (searchTerm) {
-      filtered = filtered.filter(item =>
-        item.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.course_title.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Course filter
-    if (courseFilter !== 'all') {
-      filtered = filtered.filter(item => item.course_id === courseFilter);
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'completed') {
-        filtered = filtered.filter(item => item.completion_date !== null);
-      } else if (statusFilter === 'in-progress') {
-        filtered = filtered.filter(item => item.completion_date === null && item.progress_percentage > 0);
-      } else if (statusFilter === 'not-started') {
-        filtered = filtered.filter(item => item.progress_percentage === 0);
+      if (searchTerm) {
+        filtered = filtered.filter(item =>
+          item.section_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.course_title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
       }
-    }
 
-    // Employment filter
-    if (employmentFilter !== 'all') {
-      filtered = filtered.filter(item => item.employment_status === employmentFilter);
-    }
+      if (courseFilter !== 'all') {
+        filtered = filtered.filter(item => 
+          courses.find(c => c.id === courseFilter)?.title === item.course_title
+        );
+      }
 
-    setFilteredData(filtered);
+      setFilteredSections(filtered);
+    } else {
+      let filtered = courseAnalytics;
+
+      if (searchTerm) {
+        filtered = filtered.filter(item =>
+          item.course_title.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      if (courseFilter !== 'all') {
+        filtered = filtered.filter(item => item.course_id === courseFilter);
+      }
+
+      setFilteredCourses(filtered);
+    }
   };
 
   const exportToCSV = () => {
-    const headers = [
-      'User Name',
-      'Email',
-      'Course',
-      'Level',
-      'Progress %',
-      'Completed Subsections',
-      'Total Subsections',
-      'Status',
-      'Last Activity',
-      'Completion Date',
-      'Employment Status'
-    ];
+    const currentData = viewType === 'sections' ? filteredSections : filteredCourses;
+    
+    const headers = viewType === 'sections' 
+      ? ['Section', 'Course', 'Level', 'Total Subsections', 'Users Started', 'Users Completed', 'Completion Rate %', 'Avg Completion Time (Hours)']
+      : ['Course', 'Level', 'Total Sections', 'Users Started', 'Users Completed', 'Completion Rate %', 'Avg Completion Time (Hours)'];
 
-    const csvData = filteredData.map(item => [
-      item.user_name,
-      item.user_email,
-      item.course_title,
-      item.course_level.toString(),
-      item.progress_percentage.toFixed(1),
-      item.completed_subsections.toString(),
-      item.total_subsections.toString(),
-      item.completion_date ? 'Completed' : item.progress_percentage > 0 ? 'In Progress' : 'Not Started',
-      format(new Date(item.last_activity), 'MMM dd, yyyy'),
-      item.completion_date ? format(new Date(item.completion_date), 'MMM dd, yyyy') : 'N/A',
-      item.employment_status
-    ]);
+    const csvData = currentData.map(item => 
+      viewType === 'sections' ? [
+        (item as SectionAnalytics).section_title,
+        item.course_title,
+        item.course_level.toString(),
+        (item as SectionAnalytics).total_subsections.toString(),
+        item.users_started.toString(),
+        item.users_completed.toString(),
+        item.completion_rate.toFixed(1),
+        item.avg_completion_time_hours ? item.avg_completion_time_hours.toFixed(1) : 'N/A'
+      ] : [
+        item.course_title,
+        item.course_level.toString(),
+        (item as CourseAnalytics).total_sections.toString(),
+        item.users_started.toString(),
+        item.users_completed.toString(),
+        item.completion_rate.toFixed(1),
+        item.avg_completion_time_hours ? item.avg_completion_time_hours.toFixed(1) : 'N/A'
+      ]
+    );
 
     const csvContent = [headers, ...csvData]
       .map(row => row.map(cell => `"${cell}"`).join(','))
@@ -292,7 +374,7 @@ const ProgressAnalytics = () => {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `progress_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      link.setAttribute('download', `${viewType}_analytics_${format(new Date(), 'yyyy-MM-dd')}.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -301,29 +383,25 @@ const ProgressAnalytics = () => {
 
     toast({
       title: "Export Successful",
-      description: "Progress report has been downloaded",
+      description: `${viewType} analytics has been downloaded`,
     });
   };
 
-  const getStatusBadge = (item: ProgressData) => {
-    if (item.completion_date) {
-      return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-    } else if (item.progress_percentage > 0) {
-      return <Badge variant="secondary">In Progress</Badge>;
-    } else {
-      return <Badge variant="outline">Not Started</Badge>;
-    }
+  const formatTime = (hours: number | null) => {
+    if (!hours) return 'N/A';
+    if (hours < 1) return `${Math.round(hours * 60)} mins`;
+    return `${hours.toFixed(1)} hours`;
   };
 
-  const uniqueEmploymentStatuses = [...new Set(progressData.map(item => item.employment_status))];
+  const currentData = viewType === 'sections' ? filteredSections : filteredCourses;
 
   if (loading) {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[...Array(5)].map((_, i) => (
               <div key={i} className="h-32 bg-muted rounded"></div>
             ))}
           </div>
@@ -335,7 +413,7 @@ const ProgressAnalytics = () => {
   return (
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Progress Analytics</h1>
+        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
         <Button onClick={exportToCSV} className="flex items-center gap-2">
           <Download className="h-4 w-4" />
           Export CSV
@@ -343,7 +421,7 @@ const ProgressAnalytics = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -366,11 +444,21 @@ const ProgressAnalytics = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Completions</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sections</CardTitle>
+            <Filter className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total_sections}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Course Completions</CardTitle>
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total_completions}</div>
+            <div className="text-2xl font-bold">{stats.total_course_completions}</div>
           </CardContent>
         </Card>
 
@@ -385,20 +473,33 @@ const ProgressAnalytics = () => {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* View Type Selector */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filters
-          </CardTitle>
+          <CardTitle>View Analytics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant={viewType === 'sections' ? 'default' : 'outline'}
+              onClick={() => setViewType('sections')}
+            >
+              Section Analytics
+            </Button>
+            <Button
+              variant={viewType === 'courses' ? 'default' : 'outline'}
+              onClick={() => setViewType('courses')}
+            >
+              Course Analytics
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users or courses..."
+                placeholder={`Search ${viewType}...`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -418,90 +519,74 @@ const ProgressAnalytics = () => {
                 ))}
               </SelectContent>
             </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="not-started">Not Started</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={employmentFilter} onValueChange={setEmploymentFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by employment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Employment</SelectItem>
-                {uniqueEmploymentStatuses.map(status => (
-                  <SelectItem key={status} value={status}>
-                    {status || 'N/A'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Progress Table */}
+      {/* Analytics Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Progress Details ({filteredData.length} records)</CardTitle>
+          <CardTitle>
+            {viewType === 'sections' ? 'Section' : 'Course'} Analytics ({currentData.length} {viewType})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Activity</TableHead>
-                  <TableHead>Employment</TableHead>
+                  <TableHead>{viewType === 'sections' ? 'Section' : 'Course'}</TableHead>
+                  {viewType === 'sections' && <TableHead>Course</TableHead>}
+                  <TableHead>Level</TableHead>
+                  <TableHead>{viewType === 'sections' ? 'Subsections' : 'Sections'}</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Completed</TableHead>
+                  <TableHead>Completion Rate</TableHead>
+                  <TableHead>Avg Time</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((item, index) => (
+                {currentData.map((item, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{item.user_name}</div>
-                        <div className="text-sm text-muted-foreground">{item.user_email}</div>
+                      <div className="font-medium">
+                        {viewType === 'sections' ? (item as SectionAnalytics).section_title : item.course_title}
+                      </div>
+                    </TableCell>
+                    {viewType === 'sections' && (
+                      <TableCell>
+                        <div className="text-sm text-muted-foreground">{item.course_title}</div>
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Badge variant="outline">Level {item.course_level}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {viewType === 'sections' ? (item as SectionAnalytics).total_subsections : (item as CourseAnalytics).total_sections}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        {item.users_started}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <div className="font-medium">{item.course_title}</div>
-                        <div className="text-sm text-muted-foreground">Level {item.course_level}</div>
+                      <div className="flex items-center gap-2">
+                        <Award className="h-4 w-4 text-muted-foreground" />
+                        {item.users_completed}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Progress value={item.progress_percentage} className="flex-1" />
-                          <span className="text-sm font-medium">{item.progress_percentage.toFixed(1)}%</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {item.completed_subsections} / {item.total_subsections} subsections
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <Progress value={item.completion_rate} className="flex-1 max-w-[100px]" />
+                        <span className="text-sm font-medium">{item.completion_rate.toFixed(1)}%</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(item)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {format(new Date(item.last_activity), 'MMM dd, yyyy')}
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        {formatTime(item.avg_completion_time_hours)}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{item.employment_status}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}
