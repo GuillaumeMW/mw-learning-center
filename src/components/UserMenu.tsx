@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { User, LogOut, Settings, Shield } from "lucide-react";
+import { User, LogOut, Settings, Shield, LayoutDashboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const UserMenu = () => {
   const { user, profile, userRole, signOut } = useAuth();
+  const navigate = useNavigate();
 
   if (!user || !profile) {
     return null;
@@ -66,6 +68,13 @@ const UserMenu = () => {
         </DropdownMenuLabel>
         
         <DropdownMenuSeparator />
+        
+        {userRole === 'admin' && (
+          <DropdownMenuItem onClick={() => navigate('/admin')}>
+            <LayoutDashboard className="mr-2 h-4 w-4" />
+            <span>Admin Dashboard</span>
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuItem disabled className="cursor-not-allowed">
           <User className="mr-2 h-4 w-4" />
