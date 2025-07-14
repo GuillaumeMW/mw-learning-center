@@ -112,13 +112,19 @@ const SubsectionEditor = () => {
     try {
       const { data, error } = await supabase
         .from('subsections')
-        .select('id')
-        .eq('section_id', sectionId);
+        .select('order_index')
+        .eq('section_id', sectionId)
+        .order('order_index', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      setExistingSubsections(data?.length || 0);
+      
+      // Get the highest order_index and add 1 for the new subsection
+      const maxOrderIndex = data?.[0]?.order_index ?? -1;
+      setExistingSubsections(maxOrderIndex + 1);
     } catch (error) {
       console.error('Error fetching existing subsections:', error);
+      setExistingSubsections(0);
     }
   };
 

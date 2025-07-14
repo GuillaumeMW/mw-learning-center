@@ -42,6 +42,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface CourseFormData {
   title: string;
@@ -58,6 +77,38 @@ interface SectionFormData {
   order_index: number;
 }
 
+// Sortable Row Component for Subsections
+const SortableRow = ({ subsection, children }: { subsection: Subsection; children: React.ReactNode }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: subsection.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style} className={isDragging ? 'bg-muted/50' : ''}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <div {...attributes} {...listeners} className="cursor-grab hover:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+          {subsection.order_index + 1}
+        </div>
+      </TableCell>
+      {children}
+    </TableRow>
+  );
+};
+
 const ContentManagement = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
@@ -71,6 +122,14 @@ const ContentManagement = () => {
   const [showSectionForm, setShowSectionForm] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [courseForm, setCourseForm] = useState<CourseFormData>({
     title: '',
@@ -384,6 +443,66 @@ const ContentManagement = () => {
     }
   };
 
+  // Handle drag end for subsections reordering
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    setSubsections((items) => {
+      const oldIndex = items.findIndex((item) => item.id === active.id);
+      const newIndex = items.findIndex((item) => item.id === over.id);
+      
+      if (oldIndex === -1 || newIndex === -1) {
+        return items;
+      }
+
+      const newItems = arrayMove(items, oldIndex, newIndex);
+      
+      // Update order_index for each item
+      const updatedItems = newItems.map((item, index) => ({
+        ...item,
+        order_index: index
+      }));
+
+      // Update database
+      updateSubsectionOrder(updatedItems);
+      
+      return updatedItems;
+    });
+  };
+
+  // Update subsection order in database
+  const updateSubsectionOrder = async (subsections: Subsection[]) => {
+    try {
+      // Update each subsection individually
+      for (const subsection of subsections) {
+        const { error } = await supabase
+          .from('subsections')
+          .update({ order_index: subsection.order_index })
+          .eq('id', subsection.id);
+        
+        if (error) throw error;
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Subsection order updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating subsection order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update subsection order',
+        variant: 'destructive',
+      });
+      // Refresh to get correct order on error
+      fetchSubsections();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -594,66 +713,71 @@ const ContentManagement = () => {
             </CardHeader>
             <CardContent>
               {selectedSection ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {subsections.map((subsection) => (
-                      <TableRow key={subsection.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                            {subsection.order_index + 1}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{subsection.title}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {subsection.subsection_type === 'quiz' ? (
-                              <HelpCircle className="h-4 w-4" />
-                            ) : subsection.video_url ? (
-                              <Play className="h-4 w-4" />
-                            ) : (
-                              <FileText className="h-4 w-4" />
-                            )}
-                            <Badge variant={subsection.subsection_type === 'quiz' ? 'destructive' : 'secondary'}>
-                              {subsection.subsection_type === 'quiz' ? 'Quiz' : 
-                               subsection.video_url ? 'Video' : 'Reading'}
-                            </Badge>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {subsection.duration_minutes ? `${subsection.duration_minutes} min` : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditSubsection(subsection)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteSubsection(subsection.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      <SortableContext
+                        items={subsections.map(s => s.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {subsections.map((subsection) => (
+                          <SortableRow key={subsection.id} subsection={subsection}>
+                            <TableCell className="font-medium">{subsection.title}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {subsection.subsection_type === 'quiz' ? (
+                                  <HelpCircle className="h-4 w-4" />
+                                ) : subsection.video_url ? (
+                                  <Play className="h-4 w-4" />
+                                ) : (
+                                  <FileText className="h-4 w-4" />
+                                )}
+                                <Badge variant={subsection.subsection_type === 'quiz' ? 'destructive' : 'secondary'}>
+                                  {subsection.subsection_type === 'quiz' ? 'Quiz' : 
+                                   subsection.video_url ? 'Video' : 'Reading'}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {subsection.duration_minutes ? `${subsection.duration_minutes} min` : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditSubsection(subsection)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteSubsection(subsection.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </SortableRow>
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </DndContext>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   Select a section to view its subsections
