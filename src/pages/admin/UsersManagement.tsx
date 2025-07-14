@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -45,6 +46,7 @@ const UsersManagement = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchUsers = async () => {
     try {
@@ -275,7 +277,11 @@ const UsersManagement = () => {
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow 
+                  key={user.id} 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/admin/users/${user.id}`)}
+                >
                   <TableCell>
                     <div>
                       <div className="font-medium">
@@ -298,20 +304,22 @@ const UsersManagement = () => {
                   </TableCell>
                   
                   <TableCell>
-                    <Select
-                      value={user.role}
-                      onValueChange={(value: 'student' | 'admin') => 
-                        handleRoleChange(user.id, value)
-                      }
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={user.role}
+                        onValueChange={(value: 'student' | 'admin') => 
+                          handleRoleChange(user.id, value)
+                        }
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </TableCell>
                   
                   <TableCell>
