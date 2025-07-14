@@ -38,6 +38,7 @@ interface UserData {
     completed_courses: number;
     overall_progress: number;
   };
+  completed_subsections?: number; // For debugging
 }
 
 const UsersManagement = () => {
@@ -67,32 +68,52 @@ const UsersManagement = () => {
 
       if (rolesError) throw rolesError;
 
-      // Get user progress data
+      // Get user progress data - only completed items
       const { data: progressData, error: progressError } = await supabase
         .from('user_progress')
         .select(`
           user_id,
           course_id,
-          progress_percentage
-        `);
+          subsection_id,
+          completed_at
+        `)
+        .not('completed_at', 'is', null);
 
       if (progressError) throw progressError;
 
-      // Get course completions
+      // Get all subsections for available courses only
+      const { data: availableCoursesData, error: availableCoursesError } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('is_available', true);
+
+      if (availableCoursesError) throw availableCoursesError;
+
+      const availableCourseIds = availableCoursesData?.map(c => c.id) || [];
+
+      // Get subsections for available courses
+      const { data: subsectionsData, error: subsectionsError } = await supabase
+        .from('subsections')
+        .select('id, section_id')
+        .in('section_id', 
+          await supabase
+            .from('sections')
+            .select('id')
+            .in('course_id', availableCourseIds)
+            .then(res => res.data?.map(s => s.id) || [])
+        );
+
+      if (subsectionsError) throw subsectionsError;
+
+      const totalAvailableSubsections = subsectionsData?.length || 0;
+
+      // Get course completions for available courses only
       const { data: completionsData, error: completionsError } = await supabase
         .from('course_completions')
-        .select('user_id, course_id');
+        .select('user_id, course_id')
+        .in('course_id', availableCourseIds);
 
       if (completionsError) throw completionsError;
-
-      // Get total number of courses
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('id');
-
-      if (coursesError) throw coursesError;
-
-      const totalCourses = coursesData?.length || 0;
 
       // Process the data
       const usersData: UserData[] = profilesData?.map(profile => {
@@ -100,9 +121,16 @@ const UsersManagement = () => {
         const userCompletions = completionsData?.filter(c => c.user_id === profile.user_id) || [];
         const userRole = rolesData?.find(r => r.user_id === profile.user_id);
         
-        // Calculate overall progress
-        const totalProgress = userProgress.reduce((sum, p) => sum + (p.progress_percentage || 0), 0);
-        const averageProgress = userProgress.length > 0 ? totalProgress / userProgress.length : 0;
+        // Calculate overall progress based on completed subsections in available courses
+        const completedSubsections = userProgress.filter(p => 
+          p.subsection_id && 
+          p.completed_at &&
+          availableCourseIds.includes(p.course_id)
+        ).length;
+        
+        const overallProgress = totalAvailableSubsections > 0 
+          ? Math.round((completedSubsections / totalAvailableSubsections) * 100)
+          : 0;
 
         return {
           id: profile.user_id,
@@ -116,10 +144,11 @@ const UsersManagement = () => {
           },
           role: userRole?.role || 'student',
           course_progress: {
-            total_courses: totalCourses,
+            total_courses: availableCourseIds.length,
             completed_courses: userCompletions.length,
-            overall_progress: Math.round(averageProgress),
+            overall_progress: overallProgress,
           },
+          completed_subsections: completedSubsections, // Add this for debugging
         };
       }) || [];
 
@@ -241,6 +270,7 @@ const UsersManagement = () => {
                 <TableHead>Registration Date</TableHead>
                 <TableHead>Course Progress</TableHead>
                 <TableHead>Completion Rate</TableHead>
+                <TableHead>Subsection Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -313,6 +343,20 @@ const UsersManagement = () => {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Courses completed
+                      </div>
+                    </div>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold">
+                        {user.completed_subsections || 0}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Subsections completed
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ({user.course_progress.overall_progress}% of available)
                       </div>
                     </div>
                   </TableCell>
