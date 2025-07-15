@@ -25,6 +25,13 @@ interface VideoPlayerProps {
   className?: string;
 }
 
+// Utility function to detect and extract Loom video ID
+const getLoomEmbedUrl = (url: string): string | null => {
+  const loomRegex = /(?:https?:\/\/)?(?:www\.)?loom\.com\/share\/([a-zA-Z0-9]+)/;
+  const match = url.match(loomRegex);
+  return match ? `https://www.loom.com/embed/${match[1]}` : null;
+};
+
 export const VideoPlayer = ({ 
   videoUrl, 
   onProgress, 
@@ -41,7 +48,14 @@ export const VideoPlayer = ({
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Check if the URL is a Loom URL
+  const loomEmbedUrl = getLoomEmbedUrl(videoUrl);
+  const isLoomVideo = !!loomEmbedUrl;
+
   useEffect(() => {
+    // Only set up video event listeners for regular video files, not Loom videos
+    if (isLoomVideo) return;
+    
     const video = videoRef.current;
     if (!video) return;
 
@@ -78,7 +92,7 @@ export const VideoPlayer = ({
       video.removeEventListener('ended', handleEnded);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [onProgress, onComplete, initialProgress]);
+  }, [onProgress, onComplete, initialProgress, isLoomVideo]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -153,6 +167,22 @@ export const VideoPlayer = ({
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
+  // Render Loom iframe if it's a Loom URL
+  if (isLoomVideo) {
+    return (
+      <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
+        <iframe
+          src={loomEmbedUrl}
+          className="w-full h-full"
+          allowFullScreen
+          frameBorder="0"
+          title="Loom video"
+        />
+      </div>
+    );
+  }
+
+  // Render regular video player with controls
   return (
     <div className={`relative bg-black rounded-lg overflow-hidden group ${className}`}>
       <video
