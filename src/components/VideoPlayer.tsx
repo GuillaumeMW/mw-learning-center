@@ -171,13 +171,15 @@ export const VideoPlayer = ({
   if (isLoomVideo) {
     return (
       <div className={`relative bg-black rounded-lg overflow-hidden ${className}`}>
-        <iframe
-          src={loomEmbedUrl}
-          className="w-full h-full"
-          allowFullScreen
-          frameBorder="0"
-          title="Loom video"
-        />
+        <div className="aspect-video">
+          <iframe
+            src={loomEmbedUrl}
+            className="w-full h-full"
+            allowFullScreen
+            frameBorder="0"
+            title="Loom video"
+          />
+        </div>
       </div>
     );
   }
