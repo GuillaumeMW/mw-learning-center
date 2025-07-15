@@ -87,13 +87,15 @@ const CourseDashboard = () => {
       <div className="flex justify-between items-start">
         <div className="text-center flex-1 space-y-4">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-full bg-gradient-primary">
-              <GraduationCap className="h-8 w-8 text-white" />
-            </div>
+            <img 
+              src="/lovable-uploads/9b297a3a-a404-4d3f-9e07-7aacf214c613.png" 
+              alt="Moving Waldo" 
+              className="h-16 w-auto"
+            />
           </div>
           
           <h1 className="text-4xl font-bold tracking-tight">
-            MW Learning Center
+            Learning Center
           </h1>
           
           {profile && (
