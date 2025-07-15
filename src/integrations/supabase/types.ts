@@ -251,6 +251,39 @@ export type Database = {
           },
         ]
       }
+      subsection_attachments: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
+          id: string
+          subsection_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
+          id?: string
+          subsection_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          subsection_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subsections: {
         Row: {
           content: string | null

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Section, Subsection, UserProgress } from "@/types/course";
+import { Section, Subsection, UserProgress, SubsectionAttachment } from "@/types/course";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,8 @@ import {
   CheckCircle, 
   Play,
   FileText,
-  HelpCircle
+  HelpCircle,
+  Download
 } from "lucide-react";
 
 export const SubsectionPage = () => {
@@ -27,6 +28,7 @@ export const SubsectionPage = () => {
   const [subsection, setSubsection] = useState<Subsection | null>(null);
   const [section, setSection] = useState<Section | null>(null);
   const [allSubsections, setAllSubsections] = useState<Subsection[]>([]);
+  const [attachments, setAttachments] = useState<SubsectionAttachment[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
@@ -106,6 +108,16 @@ export const SubsectionPage = () => {
         if (progressError) throw progressError;
         setIsCompleted(!!progressData?.completed_at);
       }
+
+      // Fetch attachments
+      const { data: attachmentsData, error: attachmentsError } = await supabase
+        .from('subsection_attachments')
+        .select('*')
+        .eq('subsection_id', subsectionId)
+        .order('created_at', { ascending: true });
+
+      if (attachmentsError) throw attachmentsError;
+      setAttachments(attachmentsData || []);
 
       // Performance monitoring
       const endTime = performance.now();
@@ -298,6 +310,39 @@ export const SubsectionPage = () => {
               <p className="text-muted-foreground">
                 Quiz functionality will be implemented here.
               </p>
+            </div>
+          )}
+
+          {/* PDF Attachments */}
+          {attachments.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Supporting Documents</h3>
+              <div className="grid gap-3">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="font-medium">{attachment.display_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {attachment.file_size ? `${(attachment.file_size / 1024 / 1024).toFixed(1)} MB` : 'PDF Document'}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(attachment.file_url, '_blank')}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>

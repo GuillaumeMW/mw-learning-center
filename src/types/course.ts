@@ -31,6 +31,18 @@ export interface Subsection {
   duration_minutes: number | null;
   created_at: string;
   updated_at: string;
+  attachments?: SubsectionAttachment[];
+}
+
+export interface SubsectionAttachment {
+  id: string;
+  subsection_id: string;
+  file_name: string;
+  file_url: string;
+  file_size: number | null;
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Lesson {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SubsectionAttachment } from '@/types/course';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { PDFAttachmentManager } from '@/components/admin/PDFAttachmentManager';
 import { 
   ArrowLeft, 
   Save, 
@@ -47,6 +49,7 @@ const SubsectionEditor = () => {
   const [saving, setSaving] = useState(false);
   const [sectionInfo, setSectionInfo] = useState<SectionInfo | null>(null);
   const [existingSubsections, setExistingSubsections] = useState<number>(0);
+  const [attachments, setAttachments] = useState<SubsectionAttachment[]>([]);
   
   // Get subsection ID from search params for editing
   const subsectionId = searchParams.get('subsectionId');
@@ -147,6 +150,16 @@ const SubsectionEditor = () => {
         order_index: data.order_index,
         duration_minutes: data.duration_minutes || 0
       });
+
+      // Fetch attachments
+      const { data: attachmentsData, error: attachmentsError } = await supabase
+        .from('subsection_attachments')
+        .select('*')
+        .eq('subsection_id', subsectionId)
+        .order('created_at', { ascending: true });
+
+      if (attachmentsError) throw attachmentsError;
+      setAttachments(attachmentsData || []);
     } catch (error) {
       console.error('Error fetching subsection data:', error);
       toast({
@@ -404,6 +417,15 @@ const SubsectionEditor = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* PDF Attachments - Only show for existing subsections */}
+      {isEditing && subsectionId && (
+        <PDFAttachmentManager
+          subsectionId={subsectionId}
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
+        />
+      )}
     </div>
   );
 };
