@@ -27,6 +27,7 @@ export interface Subsection {
   content: string | null;
   video_url: string | null;
   quiz_url: string | null;
+  quiz_height: number | null;
   subsection_type: 'content' | 'quiz';
   order_index: number;
   duration_minutes: number | null;

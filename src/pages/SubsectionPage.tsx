@@ -308,7 +308,8 @@ export const SubsectionPage = () => {
             <div className="w-full">
               <iframe
                 src={subsection.quiz_url}
-                className="w-full h-[1200px] border-0 rounded-lg"
+                className="w-full border-0 rounded-lg"
+                style={{ height: `${subsection.quiz_height || 800}px` }}
                 title={`Quiz: ${subsection.title}`}
                 loading="lazy"
                 sandbox="allow-scripts allow-forms allow-same-origin"

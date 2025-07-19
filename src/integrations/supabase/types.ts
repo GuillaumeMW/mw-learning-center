@@ -291,6 +291,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           order_index: number
+          quiz_height: number | null
           quiz_url: string | null
           section_id: string
           subsection_type: string
@@ -304,6 +305,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           order_index: number
+          quiz_height?: number | null
           quiz_url?: string | null
           section_id: string
           subsection_type?: string
@@ -317,6 +319,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           order_index?: number
+          quiz_height?: number | null
           quiz_url?: string | null
           section_id?: string
           subsection_type?: string
