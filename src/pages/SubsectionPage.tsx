@@ -303,12 +303,31 @@ export const SubsectionPage = () => {
             </div>
           )}
 
-          {/* Quiz placeholder */}
-          {subsection.subsection_type === 'quiz' && (
+          {/* Quiz iframe */}
+          {subsection.subsection_type === 'quiz' && subsection.quiz_url && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                Quiz
+              </h3>
+              <div className="w-full">
+                <iframe
+                  src={subsection.quiz_url}
+                  className="w-full h-[600px] border-0 rounded-lg"
+                  title={`Quiz: ${subsection.title}`}
+                  loading="lazy"
+                  sandbox="allow-scripts allow-forms allow-same-origin"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Quiz placeholder when no URL */}
+          {subsection.subsection_type === 'quiz' && !subsection.quiz_url && (
             <div className="bg-muted p-6 rounded-lg text-center">
               <HelpCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">
-                Quiz functionality will be implemented here.
+                No quiz URL configured for this subsection.
               </p>
             </div>
           )}

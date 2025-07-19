@@ -26,6 +26,7 @@ interface SubsectionFormData {
   title: string;
   content: string;
   video_url: string;
+  quiz_url: string;
   section_id: string;
   subsection_type: 'content' | 'quiz';
   order_index: number;
@@ -59,6 +60,7 @@ const SubsectionEditor = () => {
     title: '',
     content: '',
     video_url: '',
+    quiz_url: '',
     section_id: sectionId || '',
     subsection_type: 'content',
     order_index: 0,
@@ -145,6 +147,7 @@ const SubsectionEditor = () => {
         title: data.title,
         content: data.content || '',
         video_url: data.video_url || '',
+        quiz_url: data.quiz_url || '',
         section_id: data.section_id,
         subsection_type: data.subsection_type as 'content' | 'quiz',
         order_index: data.order_index,
@@ -402,6 +405,23 @@ const SubsectionEditor = () => {
                 Add a video URL to make this a video-based subsection. Leave empty for text-only content.
               </p>
             </div>
+
+            {/* Quiz URL - Only show for quiz type */}
+            {formData.subsection_type === 'quiz' && (
+              <div>
+                <Label htmlFor="quiz-url">Quiz URL *</Label>
+                <Input
+                  id="quiz-url"
+                  value={formData.quiz_url}
+                  onChange={(e) => setFormData({ ...formData, quiz_url: e.target.value })}
+                  placeholder="https://docs.google.com/forms/d/e/..."
+                  required={formData.subsection_type === 'quiz'}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the Google Form URL or other quiz platform URL. This will be embedded as an iframe for students to complete.
+                </p>
+              </div>
+            )}
 
             {/* Content */}
             <div>
