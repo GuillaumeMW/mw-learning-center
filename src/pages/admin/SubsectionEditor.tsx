@@ -27,6 +27,7 @@ interface SubsectionFormData {
   content: string;
   video_url: string;
   quiz_url: string;
+  quiz_height: number;
   section_id: string;
   subsection_type: 'content' | 'quiz';
   order_index: number;
@@ -61,6 +62,7 @@ const SubsectionEditor = () => {
     content: '',
     video_url: '',
     quiz_url: '',
+    quiz_height: 800,
     section_id: sectionId || '',
     subsection_type: 'content',
     order_index: 0,
@@ -148,6 +150,7 @@ const SubsectionEditor = () => {
         content: data.content || '',
         video_url: data.video_url || '',
         quiz_url: data.quiz_url || '',
+        quiz_height: 800, // Default height, will be overridden if we add this to DB
         section_id: data.section_id,
         subsection_type: data.subsection_type as 'content' | 'quiz',
         order_index: data.order_index,
@@ -406,20 +409,38 @@ const SubsectionEditor = () => {
               </p>
             </div>
 
-            {/* Quiz URL - Only show for quiz type */}
+            {/* Quiz URL and Height - Only show for quiz type */}
             {formData.subsection_type === 'quiz' && (
-              <div>
-                <Label htmlFor="quiz-url">Quiz URL *</Label>
-                <Input
-                  id="quiz-url"
-                  value={formData.quiz_url}
-                  onChange={(e) => setFormData({ ...formData, quiz_url: e.target.value })}
-                  placeholder="https://docs.google.com/forms/d/e/..."
-                  required={formData.subsection_type === 'quiz'}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter the Google Form URL or other quiz platform URL. This will be embedded as an iframe for students to complete.
-                </p>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="quiz-url">Quiz URL *</Label>
+                  <Input
+                    id="quiz-url"
+                    value={formData.quiz_url}
+                    onChange={(e) => setFormData({ ...formData, quiz_url: e.target.value })}
+                    placeholder="https://docs.google.com/forms/d/e/..."
+                    required={formData.subsection_type === 'quiz'}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter the Google Form URL or other quiz platform URL. This will be embedded as an iframe for students to complete.
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="quiz-height">Quiz Height (pixels) *</Label>
+                  <Input
+                    id="quiz-height"
+                    type="number"
+                    min="400"
+                    max="5000"
+                    value={formData.quiz_height}
+                    onChange={(e) => setFormData({ ...formData, quiz_height: parseInt(e.target.value) || 800 })}
+                    placeholder="2808"
+                    required={formData.subsection_type === 'quiz'}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Go to your Google Form → Send → Embed HTML → Copy the height value shown (e.g., 2808 px) and paste it here.
+                  </p>
+                </div>
               </div>
             )}
 
