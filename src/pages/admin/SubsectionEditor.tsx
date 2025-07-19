@@ -150,7 +150,7 @@ const SubsectionEditor = () => {
         content: data.content || '',
         video_url: data.video_url || '',
         quiz_url: data.quiz_url || '',
-        quiz_height: 800, // Default height, will be overridden if we add this to DB
+        quiz_height: data.quiz_height || 800,
         section_id: data.section_id,
         subsection_type: data.subsection_type as 'content' | 'quiz',
         order_index: data.order_index,

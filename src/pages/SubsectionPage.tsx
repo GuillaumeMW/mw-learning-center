@@ -312,7 +312,7 @@ export const SubsectionPage = () => {
                 style={{ height: `${subsection.quiz_height || 800}px` }}
                 title={`Quiz: ${subsection.title}`}
                 loading="lazy"
-                sandbox="allow-scripts allow-forms allow-same-origin"
+                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"
               />
             </div>
           )}
