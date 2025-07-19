@@ -76,12 +76,12 @@ const UserMenu = () => {
           </DropdownMenuItem>
         )}
         
-        <DropdownMenuItem disabled className="cursor-not-allowed">
+        <DropdownMenuItem onClick={() => navigate('/profile')}>
           <User className="mr-2 h-4 w-4" />
-          <span>Profile Settings</span>
+          <span>Profile</span>
         </DropdownMenuItem>
         
-        <DropdownMenuItem disabled className="cursor-not-allowed">
+        <DropdownMenuItem onClick={() => navigate('/account-settings')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Account Settings</span>
         </DropdownMenuItem>

@@ -10,6 +10,8 @@ import AdminRedirect from "@/components/AdminRedirect";
 import AdminLayout from "@/components/admin/AdminLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
+import AccountSettings from "./pages/AccountSettings";
 import CoursePage from "./pages/CoursePage";
 import LessonPage from "./pages/LessonPage";
 import { SubsectionPage } from "./pages/SubsectionPage";
@@ -82,6 +84,22 @@ const App = () => (
                       </Routes>
                     </AdminLayout>
                   </AdminRoute>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/account-settings" 
+              element={
+                <ProtectedRoute>
+                  <AccountSettings />
                 </ProtectedRoute>
               } 
             />
