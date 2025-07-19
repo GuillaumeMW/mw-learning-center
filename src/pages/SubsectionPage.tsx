@@ -313,6 +313,13 @@ export const SubsectionPage = () => {
                 title={`Quiz: ${subsection.title}`}
                 loading="lazy"
                 sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                onLoad={() => {
+                  // Scroll to top of iframe when content loads/changes (e.g., after form submission)
+                  const iframe = document.querySelector(`iframe[title="Quiz: ${subsection.title}"]`);
+                  if (iframe) {
+                    iframe.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                }}
               />
             </div>
           )}
