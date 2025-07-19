@@ -206,7 +206,18 @@ const SubsectionEditor = () => {
         toast({ title: 'Success', description: 'Subsection created successfully' });
       }
 
-      navigate('/admin/content');
+      // Navigate back with proper context
+      const returnTab = searchParams.get('returnTab');
+      const returnCourse = searchParams.get('returnCourse');
+      const returnSection = searchParams.get('returnSection');
+      
+      if (returnTab && returnCourse && returnSection) {
+        navigate(`/admin/content?tab=${returnTab}&course=${returnCourse}&section=${returnSection}`);
+      } else if (returnTab && returnCourse) {
+        navigate(`/admin/content?tab=${returnTab}&course=${returnCourse}`);
+      } else {
+        navigate('/admin/content');
+      }
     } catch (error) {
       console.error('Error saving subsection:', error);
       toast({
@@ -220,7 +231,18 @@ const SubsectionEditor = () => {
   };
 
   const handleCancel = () => {
-    navigate('/admin/content');
+    // Navigate back with proper context
+    const returnTab = searchParams.get('returnTab');
+    const returnCourse = searchParams.get('returnCourse');
+    const returnSection = searchParams.get('returnSection');
+    
+    if (returnTab && returnCourse && returnSection) {
+      navigate(`/admin/content?tab=${returnTab}&course=${returnCourse}&section=${returnSection}`);
+    } else if (returnTab && returnCourse) {
+      navigate(`/admin/content?tab=${returnTab}&course=${returnCourse}`);
+    } else {
+      navigate('/admin/content');
+    }
   };
 
   const getSubsectionIcon = () => {

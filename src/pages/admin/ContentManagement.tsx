@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Course, Section, Subsection } from '@/types/course';
@@ -122,6 +122,12 @@ const ContentManagement = () => {
   const [showSectionForm, setShowSectionForm] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get tab and selections from URL
+  const activeTab = searchParams.get('tab') || 'courses';
+  const urlCourse = searchParams.get('course') || '';
+  const urlSection = searchParams.get('section') || '';
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -149,6 +155,16 @@ const ContentManagement = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Sync URL params with local state
+  useEffect(() => {
+    if (urlCourse !== selectedCourse) {
+      setSelectedCourse(urlCourse);
+    }
+    if (urlSection !== selectedSection) {
+      setSelectedSection(urlSection);
+    }
+  }, [urlCourse, urlSection]);
 
   useEffect(() => {
     if (selectedCourse) {
@@ -341,11 +357,41 @@ const ContentManagement = () => {
   };
 
   const handleCreateSubsection = () => {
-    navigate(`/admin/content/subsection/${selectedSection}`);
+    navigate(`/admin/content/subsection/${selectedSection}?returnTab=subsections&returnCourse=${selectedCourse}&returnSection=${selectedSection}`);
   };
 
   const handleEditSubsection = (subsection: Subsection) => {
-    navigate(`/admin/content/subsection/${subsection.section_id}?subsectionId=${subsection.id}`);
+    navigate(`/admin/content/subsection/${subsection.section_id}?subsectionId=${subsection.id}&returnTab=subsections&returnCourse=${selectedCourse}&returnSection=${selectedSection}`);
+  };
+
+  // Navigation helpers
+  const updateUrlParams = (tab: string, course?: string, section?: string) => {
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (course) params.set('course', course);
+    if (section) params.set('section', section);
+    setSearchParams(params);
+  };
+
+  const handleCourseClick = (course: Course) => {
+    setSelectedCourse(course.id);
+    setSelectedSection('');
+    updateUrlParams('sections', course.id);
+  };
+
+  const handleSectionClick = (section: Section) => {
+    setSelectedSection(section.id);
+    updateUrlParams('subsections', selectedCourse, section.id);
+  };
+
+  const handleTabChange = (tab: string) => {
+    if (tab === 'courses') {
+      updateUrlParams('courses');
+    } else if (tab === 'sections' && selectedCourse) {
+      updateUrlParams('sections', selectedCourse);
+    } else if (tab === 'subsections' && selectedCourse && selectedSection) {
+      updateUrlParams('subsections', selectedCourse, selectedSection);
+    }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
@@ -524,7 +570,7 @@ const ContentManagement = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="courses" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="courses">Courses</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
@@ -549,7 +595,11 @@ const ContentManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {courses.map((course) => (
-                    <TableRow key={course.id}>
+                    <TableRow 
+                      key={course.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleCourseClick(course)}
+                    >
                       <TableCell>
                         <Badge variant="outline">Level {course.level}</Badge>
                       </TableCell>
@@ -572,21 +622,30 @@ const ContentManagement = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toggleCourseAvailability(course)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleCourseAvailability(course);
+                            }}
                           >
                             {course.is_available ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEditCourse(course)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditCourse(course);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteCourse(course.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCourse(course.id);
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -641,7 +700,11 @@ const ContentManagement = () => {
                   </TableHeader>
                   <TableBody>
                     {sections.map((section) => (
-                      <TableRow key={section.id}>
+                      <TableRow 
+                        key={section.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSectionClick(section)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -657,14 +720,20 @@ const ContentManagement = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditSection(section)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditSection(section);
+                              }}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteSection(section.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSection(section.id);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
