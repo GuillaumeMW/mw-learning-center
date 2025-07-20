@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ArrowLeft, Save, Trash2, Shield, Mail, Bell } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Navigation from '@/components/Navigation';
 
 const AccountSettings = () => {
   const navigate = useNavigate();
@@ -145,6 +146,7 @@ const AccountSettings = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navigation />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
           <Button 
