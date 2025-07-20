@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminRoute from "@/components/AdminRoute";
 import AdminRedirect from "@/components/AdminRedirect";
 import AdminLayout from "@/components/admin/AdminLayout";
+import Layout from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -38,7 +39,9 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AdminRedirect>
-                    <Index />
+                    <Layout>
+                      <Index />
+                    </Layout>
                   </AdminRedirect>
                 </ProtectedRoute>
               } 
@@ -47,7 +50,9 @@ const App = () => (
               path="/course/:courseId" 
               element={
                 <ProtectedRoute>
-                  <CoursePage />
+                  <Layout>
+                    <CoursePage />
+                  </Layout>
                 </ProtectedRoute>
               } 
             />
@@ -55,7 +60,9 @@ const App = () => (
               path="/course/:courseId/lesson/:lessonId" 
               element={
                 <ProtectedRoute>
-                  <LessonPage />
+                  <Layout>
+                    <LessonPage />
+                  </Layout>
                 </ProtectedRoute>
               } 
             />
@@ -63,7 +70,9 @@ const App = () => (
               path="/course/:courseId/subsection/:subsectionId" 
               element={
                 <ProtectedRoute>
-                  <SubsectionPage />
+                  <Layout>
+                    <SubsectionPage />
+                  </Layout>
                 </ProtectedRoute>
               } 
             />
@@ -91,7 +100,9 @@ const App = () => (
               path="/profile" 
               element={
                 <ProtectedRoute>
-                  <Profile />
+                  <Layout>
+                    <Profile />
+                  </Layout>
                 </ProtectedRoute>
               } 
             />
@@ -99,13 +110,15 @@ const App = () => (
               path="/account-settings" 
               element={
                 <ProtectedRoute>
-                  <AccountSettings />
+                  <Layout>
+                    <AccountSettings />
+                  </Layout>
                 </ProtectedRoute>
               } 
             />
-            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth" element={<Layout showNavigation={false}><Auth /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

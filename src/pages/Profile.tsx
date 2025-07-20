@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Upload, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import Navigation from '@/components/Navigation';
+
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -108,9 +108,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <div className="mb-6">
           <Button 
             variant="ghost" 
@@ -260,7 +258,6 @@ const Profile = () => {
           </Card>
         </div>
       </div>
-    </div>
   );
 };
 
