@@ -5,11 +5,15 @@ import { Course, CourseStatus } from "@/types/course";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import CourseCard from "./CourseCard";
-import UserMenu from "./UserMenu";
-import { Loader2, GraduationCap, Target, BookOpen } from "lucide-react";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Progress } from "./ui/progress";
+import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock } from "lucide-react";
+// import certificateBadge from "@/assets/certificate-level1.png";
 
 const CourseDashboard = () => {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [userProgress, setUserProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -17,7 +21,8 @@ const CourseDashboard = () => {
 
   useEffect(() => {
     fetchCourses();
-  }, []);
+    fetchUserProgress();
+  }, [user]);
 
   const fetchCourses = async () => {
     try {
@@ -37,6 +42,22 @@ const CourseDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserProgress = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setUserProgress(data || []);
+    } catch (error) {
+      console.error('Error fetching user progress:', error);
     }
   };
 
@@ -62,6 +83,23 @@ const CourseDashboard = () => {
     return 'locked';
   };
 
+  const getCurrentCourse = () => {
+    // Find the first available course or the first course
+    const availableCourse = courses.find(c => getCourseStatus(c) === 'available');
+    return availableCourse || courses[0];
+  };
+
+  const getCourseProgress = (courseId: string) => {
+    const progress = userProgress.filter(p => p.course_id === courseId);
+    if (progress.length === 0) return 0;
+    const avgProgress = progress.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / progress.length;
+    return Math.round(avgProgress);
+  };
+
+  const hasStartedAnyCourse = () => {
+    return userProgress.length > 0;
+  };
+
   const handleStartCourse = (courseId: string) => {
     navigate(`/course/${courseId}`);
   };
@@ -81,105 +119,166 @@ const CourseDashboard = () => {
     );
   }
 
+  const currentCourse = getCurrentCourse();
+  const courseProgress = currentCourse ? getCourseProgress(currentCourse.id) : 0;
+  const hasStarted = hasStartedAnyCourse();
+
   return (
-    <div className="space-y-8">
-      {/* Header Section with User Menu */}
-      <div className="flex justify-between items-start">
-        <div className="text-center flex-1 space-y-4">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-full bg-gradient-primary">
-              <GraduationCap className="h-8 w-8 text-white" />
+    <div className="space-y-12">
+      {/* Welcome Section */}
+      <div className="text-center space-y-6">
+        <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          Welcome to MW Learning Center
+        </h1>
+        
+        {profile && (
+          <p className="text-2xl text-muted-foreground">
+            Hello <span className="text-primary font-medium">{profile.first_name}</span>, ready to continue your journey?
+          </p>
+        )}
+      </div>
+
+      {/* Current Course Section */}
+      {currentCourse && (
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-br from-background to-accent/20 rounded-2xl p-8 border shadow-lg">
+            <div className="flex flex-col lg:flex-row items-center gap-8">
+              {/* Course Info */}
+              <div className="flex-1 space-y-6">
+                <div className="space-y-2">
+                  <Badge variant="secondary" className="text-sm font-medium">
+                    Level {currentCourse.level}
+                  </Badge>
+                  <h2 className="text-3xl font-bold text-foreground">
+                    {currentCourse.title}
+                  </h2>
+                  <p className="text-lg text-muted-foreground">
+                    {currentCourse.description}
+                  </p>
+                </div>
+
+                {/* Progress Section */}
+                {hasStarted && courseProgress > 0 ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Course Progress</span>
+                        <span className="text-sm font-bold text-primary">{courseProgress}%</span>
+                      </div>
+                      <Progress value={courseProgress} className="h-3" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    Ready to begin your certification journey
+                  </div>
+                )}
+
+                {/* CTA Button */}
+                <Button 
+                  size="lg" 
+                  className="text-lg px-8 py-6 hover-scale"
+                  onClick={() => navigate(`/course/${currentCourse.id}`)}
+                >
+                  {hasStarted && courseProgress > 0 ? (
+                    <>
+                      Resume Course <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  ) : (
+                    <>
+                      Start Level {currentCourse.level} <ArrowRight className="ml-2 h-5 w-5" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Certificate Badge */}
+              <div className="lg:w-80 flex justify-center">
+                <div className="relative bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-8 shadow-xl">
+                  <div className="text-center space-y-4">
+                    <div className="bg-white/20 rounded-lg px-4 py-2">
+                      <span className="text-white font-bold text-xl">LEVEL {currentCourse.level}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-primary-foreground text-lg font-medium">moving waldo</div>
+                      <div className="text-white text-2xl font-bold tracking-wider">CERTIFIED</div>
+                    </div>
+                    {courseProgress === 100 && (
+                      <div className="absolute -top-2 -right-2">
+                        <Badge className="bg-green-600 text-white font-bold px-3 py-1">
+                          COMPLETED
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <h1 className="text-4xl font-bold tracking-tight">
-            MW Learning Center
-          </h1>
-          
-          {profile && (
-            <p className="text-xl text-primary font-medium">
-              Welcome back, {profile.first_name}!
-            </p>
-          )}
-          
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Master the art of relocation with our comprehensive certification program
+        </div>
+      )}
+
+      {/* Future Courses Section */}
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-4">
+            Your Learning Path
+          </h2>
+          <p className="text-lg text-muted-foreground">
+            Complete each level to unlock the next certification
           </p>
         </div>
-
-        <div className="flex items-center gap-4">
-          <UserMenu />
-        </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-        <div className="text-center p-6 rounded-lg bg-gradient-secondary">
-          <Target className="h-8 w-8 mx-auto mb-3 text-primary" />
-          <div className="text-2xl font-bold text-foreground">{courses.length}</div>
-          <div className="text-sm text-muted-foreground">Total Courses</div>
-        </div>
         
-        <div className="text-center p-6 rounded-lg bg-gradient-secondary">
-          <BookOpen className="h-8 w-8 mx-auto mb-3 text-available" />
-          <div className="text-2xl font-bold text-foreground">
-            {courses.filter(c => getCourseStatus(c) === 'available').length}
-          </div>
-          <div className="text-sm text-muted-foreground">Available Now</div>
-        </div>
-        
-        <div className="text-center p-6 rounded-lg bg-gradient-secondary">
-          <GraduationCap className="h-8 w-8 mx-auto mb-3 text-coming-soon" />
-          <div className="text-2xl font-bold text-foreground">
-            {courses.filter(c => c.is_coming_soon).length}
-          </div>
-          <div className="text-sm text-muted-foreground">Coming Soon</div>
-        </div>
-      </div>
-
-      {/* Courses Grid */}
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-6 text-center">
-          Certification Levels
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-          {courses.map((course, index) => (
-            <div key={course.id} style={{ animationDelay: `${index * 100}ms` }}>
-              <CourseCard
-                course={course}
-                status={getCourseStatus(course)}
-                progress={0} // TODO: Fetch actual progress from database
-                onStartCourse={handleStartCourse}
-                onContinueCourse={handleContinueCourse}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Learning Path Info */}
-      <div className="max-w-4xl mx-auto bg-accent/50 rounded-lg p-6 border border-accent">
-        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" />
-          Your Learning Path
-        </h3>
-        <p className="text-muted-foreground mb-4">
-          Progress through each level sequentially to build your expertise as a MovingWaldo Relocation Specialist.
-        </p>
-        <div className="space-y-2 text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-available"></div>
-            <span><strong>Available:</strong> Ready to start learning</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-locked"></div>
-            <span><strong>Locked:</strong> Complete previous levels first</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-coming-soon"></div>
-            <span><strong>Coming Soon:</strong> Under development</span>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course, index) => {
+            const status = getCourseStatus(course);
+            const progress = getCourseProgress(course.id);
+            const isCurrentCourse = currentCourse?.id === course.id;
+            
+            return (
+              <div 
+                key={course.id} 
+                className={`relative bg-card rounded-xl border p-6 transition-all hover:shadow-md ${
+                  isCurrentCourse ? 'ring-2 ring-primary/50 bg-primary/5' : ''
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Current Course Indicator */}
+                {isCurrentCourse && (
+                  <div className="absolute -top-3 -right-3">
+                    <Badge className="bg-primary text-white font-bold">
+                      CURRENT
+                    </Badge>
+                  </div>
+                )}
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Badge variant={status === 'available' ? 'default' : 'secondary'}>
+                      Level {course.level}
+                    </Badge>
+                    {status === 'locked' && <Lock className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                  
+                  <h3 className="text-xl font-semibold">{course.title}</h3>
+                  <p className="text-muted-foreground text-sm">{course.description}</p>
+                  
+                  {progress > 0 && (
+                    <div className="space-y-2">
+                      <Progress value={progress} className="h-2" />
+                      <span className="text-xs text-muted-foreground">{progress}% complete</span>
+                    </div>
+                  )}
+                  
+                  <div className="text-xs text-muted-foreground">
+                    {status === 'available' && 'Ready to start'}
+                    {status === 'locked' && 'Complete previous levels first'}
+                    {status === 'coming-soon' && 'Coming soon'}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
