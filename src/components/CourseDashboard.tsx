@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock } from "lucide-react";
-import certificateBadge from "@/assets/certificate-level1.png";
+import certificateBadge from "@/assets/mw_certificate_level1.png";
 
 const CourseDashboard = () => {
   const [courses, setCourses] = useState<Course[]>([]);
