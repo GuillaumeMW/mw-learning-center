@@ -9,7 +9,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock } from "lucide-react";
-// import certificateBadge from "@/assets/certificate-level1.png";
+import certificateBadge from "@/assets/certificate-level1.png";
 
 const CourseDashboard = () => {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -91,9 +91,13 @@ const CourseDashboard = () => {
 
   const getCourseProgress = (courseId: string) => {
     const progress = userProgress.filter(p => p.course_id === courseId);
-    if (progress.length === 0) return 0;
-    const avgProgress = progress.reduce((sum, p) => sum + (p.progress_percentage || 0), 0) / progress.length;
-    return Math.round(avgProgress);
+    if (progress.length === 0) return { percentage: 0, completed: 0, total: 0 };
+    
+    const completed = progress.filter(p => p.progress_percentage === 100).length;
+    const total = progress.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    return { percentage, completed, total };
   };
 
   const hasStartedAnyCourse = () => {
@@ -120,7 +124,7 @@ const CourseDashboard = () => {
   }
 
   const currentCourse = getCurrentCourse();
-  const courseProgress = currentCourse ? getCourseProgress(currentCourse.id) : 0;
+  const courseProgress = currentCourse ? getCourseProgress(currentCourse.id) : { percentage: 0, completed: 0, total: 0 };
   const hasStarted = hasStartedAnyCourse();
 
   return (
@@ -158,14 +162,18 @@ const CourseDashboard = () => {
                 </div>
 
                 {/* Progress Section */}
-                {hasStarted && courseProgress > 0 ? (
+                {hasStarted && courseProgress.percentage > 0 ? (
                   <div className="space-y-4">
-                    <div className="space-y-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="h-5 w-5 text-foreground" />
+                      <span className="text-lg font-semibold text-foreground">Your Progress</span>
+                    </div>
+                    <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium text-muted-foreground">Course Progress</span>
-                        <span className="text-sm font-bold text-primary">{courseProgress}%</span>
+                        <span className="text-muted-foreground">{courseProgress.completed} of {courseProgress.total} items completed</span>
+                        <span className="text-lg font-bold text-primary">{courseProgress.percentage}%</span>
                       </div>
-                      <Progress value={courseProgress} className="h-3" />
+                      <Progress value={courseProgress.percentage} className="h-3 bg-muted" />
                     </div>
                   </div>
                 ) : (
@@ -180,7 +188,7 @@ const CourseDashboard = () => {
                   className="text-lg px-8 py-6 hover-scale"
                   onClick={() => navigate(`/course/${currentCourse.id}`)}
                 >
-                  {hasStarted && courseProgress > 0 ? (
+                  {hasStarted && courseProgress.percentage > 0 ? (
                     <>
                       Resume Course <ArrowRight className="ml-2 h-5 w-5" />
                     </>
@@ -194,23 +202,19 @@ const CourseDashboard = () => {
 
               {/* Certificate Badge */}
               <div className="lg:w-80 flex justify-center">
-                <div className="relative bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-8 shadow-xl">
-                  <div className="text-center space-y-4">
-                    <div className="bg-white/20 rounded-lg px-4 py-2">
-                      <span className="text-white font-bold text-xl">LEVEL {currentCourse.level}</span>
+                <div className="relative">
+                  <img 
+                    src={certificateBadge} 
+                    alt={`Level ${currentCourse.level} Certificate`}
+                    className="w-full h-auto max-w-sm rounded-2xl shadow-xl"
+                  />
+                  {courseProgress.percentage === 100 && (
+                    <div className="absolute -top-2 -right-2">
+                      <Badge className="bg-green-600 text-white font-bold px-3 py-1">
+                        COMPLETED
+                      </Badge>
                     </div>
-                    <div className="space-y-2">
-                      <div className="text-primary-foreground text-lg font-medium">moving waldo</div>
-                      <div className="text-white text-2xl font-bold tracking-wider">CERTIFIED</div>
-                    </div>
-                    {courseProgress === 100 && (
-                      <div className="absolute -top-2 -right-2">
-                        <Badge className="bg-green-600 text-white font-bold px-3 py-1">
-                          COMPLETED
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -263,10 +267,10 @@ const CourseDashboard = () => {
                   <h3 className="text-xl font-semibold">{course.title}</h3>
                   <p className="text-muted-foreground text-sm">{course.description}</p>
                   
-                  {progress > 0 && (
+                  {progress.percentage > 0 && (
                     <div className="space-y-2">
-                      <Progress value={progress} className="h-2" />
-                      <span className="text-xs text-muted-foreground">{progress}% complete</span>
+                      <Progress value={progress.percentage} className="h-2" />
+                      <span className="text-xs text-muted-foreground">{progress.percentage}% complete</span>
                     </div>
                   )}
                   
