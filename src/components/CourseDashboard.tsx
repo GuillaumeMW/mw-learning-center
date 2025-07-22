@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Course, CourseStatus } from "@/types/course";
+import { Course, CourseStatus, Section, Subsection } from "@/types/course";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import CourseCard from "./CourseCard";
@@ -11,8 +11,14 @@ import { Progress } from "./ui/progress";
 import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock } from "lucide-react";
 import certificateBadge from "@/assets/mw_certificate_l1.png";
 
+interface CourseWithNestedContent extends Course {
+  sections?: (Section & { subsections?: Subsection[] })[];
+  _totalItems: number;
+  _hasStructuredContent: boolean;
+}
+
 const CourseDashboard = () => {
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<CourseWithNestedContent[]>([]);
   const [userProgress, setUserProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -28,11 +34,47 @@ const CourseDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('courses')
-        .select('*')
-        .order('level', { ascending: true });
+        .select(`
+          *,
+          sections (
+            id,
+            title,
+            order_index,
+            subsections (
+              id,
+              subsection_type,
+              duration_minutes
+            )
+          )
+        `)
+        .order('level', { ascending: true })
+        .order('order_index', { foreignTable: 'sections', ascending: true })
+        .order('order_index', { foreignTable: 'sections.subsections', ascending: true });
 
       if (error) throw error;
-      setCourses(data || []);
+
+      const coursesWithTotals: CourseWithNestedContent[] = (data || []).map(course => {
+        let totalItems = 0;
+        let hasStructuredContent = false;
+
+        if (course.sections && course.sections.length > 0) {
+          hasStructuredContent = true;
+          course.sections.forEach(section => {
+            if (section.subsections) {
+              totalItems += section.subsections.length;
+            }
+          });
+        }
+
+        return {
+          ...course,
+          sections: course.sections as (Section & { subsections: Subsection[] })[],
+          _totalItems: totalItems,
+          _hasStructuredContent: hasStructuredContent,
+        };
+      });
+
+      setCourses(coursesWithTotals);
     } catch (error) {
       console.error('Error fetching courses:', error);
       toast({
@@ -51,7 +93,7 @@ const CourseDashboard = () => {
     try {
       const { data, error } = await supabase
         .from('user_progress')
-        .select('*')
+        .select('course_id, subsection_id, lesson_id, completed_at')
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -89,15 +131,23 @@ const CourseDashboard = () => {
     return availableCourse || courses[0];
   };
 
-  const getCourseProgress = (courseId: string) => {
-    const progress = userProgress.filter(p => p.course_id === courseId);
-    if (progress.length === 0) return { percentage: 0, completed: 0, total: 0 };
-    
-    const completed = progress.filter(p => p.progress_percentage === 100).length;
-    const total = progress.length;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-    
-    return { percentage, completed, total };
+  const getCourseProgress = (course: CourseWithNestedContent) => {
+    if (!course._totalItems || course._totalItems === 0) {
+      return { percentage: 0, completed: 0, total: 0 };
+    }
+
+    const completedItemsIds = new Set(userProgress
+      .filter(p => p.course_id === course.id && p.completed_at)
+      .map(p => p.subsection_id || p.lesson_id)
+      .filter(Boolean)
+    );
+
+    const completedCount = completedItemsIds.size;
+    const totalCount = course._totalItems;
+
+    const percentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    return { percentage, completed: completedCount, total: totalCount };
   };
 
   const hasStartedAnyCourse = () => {
@@ -124,7 +174,7 @@ const CourseDashboard = () => {
   }
 
   const currentCourse = getCurrentCourse();
-  const courseProgress = currentCourse ? getCourseProgress(currentCourse.id) : { percentage: 0, completed: 0, total: 0 };
+  const courseProgress = currentCourse ? getCourseProgress(currentCourse) : { percentage: 0, completed: 0, total: 0 };
   const hasStarted = hasStartedAnyCourse();
 
   return (
@@ -162,7 +212,7 @@ const CourseDashboard = () => {
                 </div>
 
                 {/* Progress Section */}
-                {hasStarted && courseProgress.percentage > 0 ? (
+                {courseProgress.total > 0 && (
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Target className="h-5 w-5 text-foreground" />
@@ -176,9 +226,10 @@ const CourseDashboard = () => {
                       <Progress value={courseProgress.percentage} className="h-3 bg-muted" />
                     </div>
                   </div>
-                ) : (
+                )}
+                {courseProgress.total === 0 && (
                   <div className="text-muted-foreground">
-                    Ready to begin your certification journey
+                    No learning items defined for this course yet.
                   </div>
                 )}
 
@@ -188,7 +239,7 @@ const CourseDashboard = () => {
                   className="text-lg px-8 py-6 hover-scale"
                   onClick={() => navigate(`/course/${currentCourse.id}`)}
                 >
-                  {hasStarted && courseProgress.percentage > 0 ? (
+                  {courseProgress.completed > 0 ? (
                     <>
                       Resume Course <ArrowRight className="ml-2 h-5 w-5" />
                     </>
@@ -236,7 +287,7 @@ const CourseDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course, index) => {
             const status = getCourseStatus(course);
-            const progress = getCourseProgress(course.id);
+            const progress = getCourseProgress(course);
             const isCurrentCourse = currentCourse?.id === course.id;
             
             return (
@@ -267,11 +318,14 @@ const CourseDashboard = () => {
                   <h3 className="text-xl font-semibold">{course.title}</h3>
                   <p className="text-muted-foreground text-sm">{course.description}</p>
                   
-                  {progress.percentage > 0 && (
+                  {progress.total > 0 && (
                     <div className="space-y-2">
                       <Progress value={progress.percentage} className="h-2" />
                       <span className="text-xs text-muted-foreground">{progress.percentage}% complete</span>
                     </div>
+                  )}
+                  {progress.total === 0 && (
+                    <div className="text-xs text-muted-foreground">No learning items</div>
                   )}
                   
                   <div className="text-xs text-muted-foreground">

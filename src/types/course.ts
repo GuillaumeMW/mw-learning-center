@@ -7,6 +7,7 @@ export interface Course {
   is_coming_soon: boolean;
   created_at: string;
   updated_at: string;
+  sections?: Section[];
 }
 
 export interface Section {
