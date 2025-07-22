@@ -40,55 +40,81 @@ export const CourseStructure = ({ courseId }: CourseStructureProps) => {
     }
   }, [courseId, user]);
 
+  // New useEffect to determine initial expanded section once data is loaded
+  useEffect(() => {
+    if (sections.length > 0 && userProgress.length >= 0 && !loading) {
+      let firstUncompletedSectionId: string | null = null;
+
+      // Find the first section that contains an uncompleted subsection
+      for (const section of sections) {
+        if (section.subsections) {
+          const hasUncompletedSubsection = section.subsections.some(
+            (subsection) => !isSubsectionCompleted(subsection.id)
+          );
+          if (hasUncompletedSubsection) {
+            firstUncompletedSectionId = section.id;
+            break; // Found the target section, stop searching
+          }
+        }
+      }
+
+      // If all subsections are completed or no uncompleted found, default to first section
+      if (!firstUncompletedSectionId && sections.length > 0) {
+        firstUncompletedSectionId = sections[0].id;
+      }
+
+      if (firstUncompletedSectionId) {
+        setExpandedSections(new Set([firstUncompletedSectionId]));
+      } else {
+        setExpandedSections(new Set()); // No sections to expand (e.g., no content or still loading)
+      }
+    }
+  }, [sections, userProgress, loading]);
+
   const fetchCourseStructure = async () => {
     try {
-      // Fetch sections
       const { data: sectionsData, error: sectionsError } = await supabase
         .from('sections')
-        .select('*')
+        .select(`
+          id,
+          title,
+          description,
+          order_index,
+          course_id,
+          created_at,
+          updated_at,
+          subsections (
+            id,
+            title,
+            video_url,
+            subsection_type,
+            order_index,
+            duration_minutes,
+            section_id,
+            content,
+            quiz_url,
+            quiz_height,
+            created_at,
+            updated_at
+          )
+        `)
         .eq('course_id', courseId)
-        .order('order_index', { ascending: true });
+        .order('order_index', { ascending: true })
+        .order('order_index', { foreignTable: 'subsections', ascending: true });
 
       if (sectionsError) throw sectionsError;
 
-      if (!sectionsData || sectionsData.length === 0) {
-        setSections([]);
-        return;
-      }
-
-      // Fetch subsections for all sections
-      const { data: subsectionsData, error: subsectionsError } = await supabase
-        .from('subsections')
-        .select('*')
-        .in('section_id', sectionsData.map(s => s.id))
-        .order('order_index', { ascending: true });
-
-      if (subsectionsError) throw subsectionsError;
-
-      // Group subsections by section
-      const subsectionsMap = new Map<string, Subsection[]>();
-      subsectionsData?.forEach(subsection => {
-        if (!subsectionsMap.has(subsection.section_id)) {
-          subsectionsMap.set(subsection.section_id, []);
-        }
-        subsectionsMap.get(subsection.section_id)!.push({
-          ...subsection,
-          subsection_type: subsection.subsection_type as 'content' | 'quiz'
-        });
-      });
-
-      // Combine sections with their subsections
-      const sectionsWithSubsections = sectionsData.map(section => ({
+      // Map to ensure subsection_type is correctly typed
+      const formattedSections = sectionsData?.map(section => ({
         ...section,
-        subsections: subsectionsMap.get(section.id) || []
-      }));
+        subsections: section.subsections?.map(sub => ({
+          ...sub,
+          subsection_type: sub.subsection_type as 'content' | 'quiz'
+        })) || []
+      })) || [];
 
-      setSections(sectionsWithSubsections);
-      
-      // Expand first section by default
-      if (sectionsWithSubsections.length > 0) {
-        setExpandedSections(new Set([sectionsWithSubsections[0].id]));
-      }
+      setSections(formattedSections);
+
     } catch (error) {
       console.error('Error fetching course structure:', error);
       toast({
