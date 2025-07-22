@@ -179,35 +179,68 @@ export type Database = {
       }
       profiles: {
         Row: {
-          address: string | null
+          address_line1: string
+          address_line2: string | null
           avatar_url: string | null
+          city: string
+          country: string
           created_at: string
-          employment_status: string | null
+          employment_status:
+            | Database["public"]["Enums"]["app_employment_status"]
+            | null
           first_name: string
           id: string
+          languages_spoken: string[] | null
           last_name: string
+          occupation: Database["public"]["Enums"]["app_occupation"] | null
+          phone_number: string | null
+          postal_code: string
+          province_state: string
+          service_regions: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          address?: string | null
+          address_line1?: string
+          address_line2?: string | null
           avatar_url?: string | null
+          city?: string
+          country?: string
           created_at?: string
-          employment_status?: string | null
+          employment_status?:
+            | Database["public"]["Enums"]["app_employment_status"]
+            | null
           first_name: string
           id?: string
+          languages_spoken?: string[] | null
           last_name: string
+          occupation?: Database["public"]["Enums"]["app_occupation"] | null
+          phone_number?: string | null
+          postal_code?: string
+          province_state?: string
+          service_regions?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          address?: string | null
+          address_line1?: string
+          address_line2?: string | null
           avatar_url?: string | null
+          city?: string
+          country?: string
           created_at?: string
-          employment_status?: string | null
+          employment_status?:
+            | Database["public"]["Enums"]["app_employment_status"]
+            | null
           first_name?: string
           id?: string
+          languages_spoken?: string[] | null
           last_name?: string
+          occupation?: Database["public"]["Enums"]["app_occupation"] | null
+          phone_number?: string | null
+          postal_code?: string
+          province_state?: string
+          service_regions?: string[] | null
           updated_at?: string
           user_id?: string
         }
@@ -431,6 +464,34 @@ export type Database = {
       }
     }
     Enums: {
+      app_employment_status:
+        | "employed"
+        | "self_employed"
+        | "student"
+        | "unemployed"
+        | "other"
+      app_occupation:
+        | "Real Estate Agent"
+        | "Mortgage Broker"
+        | "Home Stager"
+        | "Property Manager"
+        | "Insurance Broker"
+        | "Interior Designer"
+        | "Professional Organizer"
+        | "Concierge / Lifestyle Manager"
+        | "Virtual Assistant"
+        | "Customer Service Representative"
+        | "Sales Representative"
+        | "Freelancer / Self-Employed"
+        | "Relocation Specialist / Retired Mover"
+        | "Retired Professional"
+        | "Student"
+        | "Stay-at-Home Parent"
+        | "Hospitality Worker (e.g., hotel, Airbnb host)"
+        | "Event Planner"
+        | "Social Worker / Community Support"
+        | "Construction / Renovation Worker"
+        | "None of the Above – Other"
       app_role: "student" | "admin"
     }
     CompositeTypes: {
@@ -559,6 +620,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_employment_status: [
+        "employed",
+        "self_employed",
+        "student",
+        "unemployed",
+        "other",
+      ],
+      app_occupation: [
+        "Real Estate Agent",
+        "Mortgage Broker",
+        "Home Stager",
+        "Property Manager",
+        "Insurance Broker",
+        "Interior Designer",
+        "Professional Organizer",
+        "Concierge / Lifestyle Manager",
+        "Virtual Assistant",
+        "Customer Service Representative",
+        "Sales Representative",
+        "Freelancer / Self-Employed",
+        "Relocation Specialist / Retired Mover",
+        "Retired Professional",
+        "Student",
+        "Stay-at-Home Parent",
+        "Hospitality Worker (e.g., hotel, Airbnb host)",
+        "Event Planner",
+        "Social Worker / Community Support",
+        "Construction / Renovation Worker",
+        "None of the Above – Other",
+      ],
       app_role: ["student", "admin"],
     },
   },

@@ -33,8 +33,17 @@ interface UserDetailData {
   profile: {
     first_name: string;
     last_name: string;
-    employment_status: string | null;
-    address: string | null;
+    phone_number: string | null;
+    address_line1: string;
+    address_line2: string | null;
+    city: string;
+    province_state: string;
+    postal_code: string;
+    country: string;
+    employment_status: 'employed' | 'self_employed' | 'student' | 'unemployed' | 'other';
+    occupation: string | null;
+    service_regions: string[] | null;
+    languages_spoken: string[] | null;
     avatar_url: string | null;
   };
   role: 'student' | 'admin';
@@ -240,7 +249,16 @@ const UserDetail = () => {
           first_name: profileData.first_name,
           last_name: profileData.last_name,
           employment_status: profileData.employment_status,
-          address: profileData.address,
+          address_line1: profileData.address_line1,
+          address_line2: profileData.address_line2,
+          city: profileData.city,
+          province_state: profileData.province_state,
+          postal_code: profileData.postal_code,
+          country: profileData.country,
+          phone_number: profileData.phone_number,
+          occupation: profileData.occupation,
+          service_regions: profileData.service_regions,
+          languages_spoken: profileData.languages_spoken,
           avatar_url: profileData.avatar_url,
         },
         role: roleData.role,
@@ -362,11 +380,20 @@ const UserDetail = () => {
                     </Badge>
                   </div>
                   
-                  {userData.profile.address && (
+                  {(userData.profile.address_line1 || userData.profile.city) && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">Address:</span>
-                      <span className="text-sm">{userData.profile.address}</span>
+                      <span className="text-sm">
+                        {[
+                          userData.profile.address_line1,
+                          userData.profile.address_line2,
+                          userData.profile.city,
+                          userData.profile.province_state,
+                          userData.profile.postal_code,
+                          userData.profile.country
+                        ].filter(Boolean).join(', ')}
+                      </span>
                     </div>
                   )}
                   

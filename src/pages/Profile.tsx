@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -24,8 +25,17 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     first_name: profile?.first_name || '',
     last_name: profile?.last_name || '',
-    address: profile?.address || '',
-    employment_status: profile?.employment_status || '',
+    phone_number: profile?.phone_number || '',
+    address_line1: profile?.address_line1 || '',
+    address_line2: profile?.address_line2 || '',
+    city: profile?.city || '',
+    province_state: profile?.province_state || '',
+    postal_code: profile?.postal_code || '',
+    country: profile?.country || 'Canada',
+    employment_status: profile?.employment_status || 'other',
+    occupation: profile?.occupation || 'None of the Above – Other',
+    service_regions: profile?.service_regions || [],
+    languages_spoken: profile?.languages_spoken || [],
   });
 
   // Fetch user progress and course completions
@@ -64,8 +74,14 @@ const Profile = () => {
     enabled: !!user?.id,
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleArrayInputChange = (field: string, value: string) => {
+    // Convert comma-separated string to array
+    const arrayValue = value.split(',').map(item => item.trim()).filter(item => item !== '');
+    setFormData(prev => ({ ...prev, [field]: arrayValue }));
   };
 
   const handleUpdateProfile = async () => {
@@ -75,7 +91,21 @@ const Profile = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update(formData)
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone_number: formData.phone_number,
+          address_line1: formData.address_line1,
+          address_line2: formData.address_line2,
+          city: formData.city,
+          province_state: formData.province_state,
+          postal_code: formData.postal_code,
+          country: formData.country,
+          employment_status: formData.employment_status as 'employed' | 'self_employed' | 'student' | 'unemployed' | 'other',
+          occupation: formData.occupation,
+          service_regions: formData.service_regions,
+          languages_spoken: formData.languages_spoken,
+        })
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -162,22 +192,144 @@ const Profile = () => {
               </div>
               
               <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  rows={3}
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                  placeholder="e.g., (555) 123-4567"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="address_line1">Address Line 1</Label>
+                <Input
+                  id="address_line1"
+                  value={formData.address_line1}
+                  onChange={(e) => handleInputChange('address_line1', e.target.value)}
+                  placeholder="Street address"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="address_line2">Address Line 2 (Optional)</Label>
+                <Input
+                  id="address_line2"
+                  value={formData.address_line2}
+                  onChange={(e) => handleInputChange('address_line2', e.target.value)}
+                  placeholder="Apartment, suite, etc."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={formData.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="province_state">Province/State</Label>
+                  <Input
+                    id="province_state"
+                    value={formData.province_state}
+                    onChange={(e) => handleInputChange('province_state', e.target.value)}
+                    placeholder="Province/State"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="postal_code">Postal Code</Label>
+                  <Input
+                    id="postal_code"
+                    value={formData.postal_code}
+                    onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                    placeholder="Postal Code"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={formData.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                    placeholder="Country"
+                  />
+                </div>
               </div>
               
               <div>
                 <Label htmlFor="employment_status">Employment Status</Label>
-                <Input
-                  id="employment_status"
-                  value={formData.employment_status}
-                  onChange={(e) => handleInputChange('employment_status', e.target.value)}
-                  placeholder="e.g., Student, Employed, Unemployed"
+                <Select value={formData.employment_status} onValueChange={(value) => handleInputChange('employment_status', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employment status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employed">Employed</SelectItem>
+                    <SelectItem value="self_employed">Self Employed</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="unemployed">Unemployed</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="occupation">Occupation</Label>
+                <Select value={formData.occupation} onValueChange={(value) => handleInputChange('occupation', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select occupation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Real Estate Agent">Real Estate Agent</SelectItem>
+                    <SelectItem value="Mortgage Broker">Mortgage Broker</SelectItem>
+                    <SelectItem value="Home Stager">Home Stager</SelectItem>
+                    <SelectItem value="Property Manager">Property Manager</SelectItem>
+                    <SelectItem value="Insurance Broker">Insurance Broker</SelectItem>
+                    <SelectItem value="Interior Designer">Interior Designer</SelectItem>
+                    <SelectItem value="Professional Organizer">Professional Organizer</SelectItem>
+                    <SelectItem value="Concierge / Lifestyle Manager">Concierge / Lifestyle Manager</SelectItem>
+                    <SelectItem value="Virtual Assistant">Virtual Assistant</SelectItem>
+                    <SelectItem value="Customer Service Representative">Customer Service Representative</SelectItem>
+                    <SelectItem value="Sales Representative">Sales Representative</SelectItem>
+                    <SelectItem value="Freelancer / Self-Employed">Freelancer / Self-Employed</SelectItem>
+                    <SelectItem value="Relocation Specialist / Retired Mover">Relocation Specialist / Retired Mover</SelectItem>
+                    <SelectItem value="Retired Professional">Retired Professional</SelectItem>
+                    <SelectItem value="Student">Student</SelectItem>
+                    <SelectItem value="Stay-at-Home Parent">Stay-at-Home Parent</SelectItem>
+                    <SelectItem value="Hospitality Worker (e.g., hotel, Airbnb host)">Hospitality Worker (e.g., hotel, Airbnb host)</SelectItem>
+                    <SelectItem value="Event Planner">Event Planner</SelectItem>
+                    <SelectItem value="Social Worker / Community Support">Social Worker / Community Support</SelectItem>
+                    <SelectItem value="Construction / Renovation Worker">Construction / Renovation Worker</SelectItem>
+                    <SelectItem value="None of the Above – Other">None of the Above – Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="service_regions">Service Regions</Label>
+                <Textarea
+                  id="service_regions"
+                  value={Array.isArray(formData.service_regions) ? formData.service_regions.join(', ') : ''}
+                  onChange={(e) => handleArrayInputChange('service_regions', e.target.value)}
+                  placeholder="Enter cities/regions separated by commas (e.g., Toronto, Montreal, Vancouver)"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="languages_spoken">Languages Spoken</Label>
+                <Textarea
+                  id="languages_spoken"
+                  value={Array.isArray(formData.languages_spoken) ? formData.languages_spoken.join(', ') : ''}
+                  onChange={(e) => handleArrayInputChange('languages_spoken', e.target.value)}
+                  placeholder="Enter languages separated by commas (e.g., English, French, Spanish)"
+                  rows={2}
                 />
               </div>
 
