@@ -10,11 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Upload, Save } from 'lucide-react';
+import { ArrowLeft, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+
 
 
 const Profile = () => {
@@ -38,41 +36,6 @@ const Profile = () => {
     languages_spoken: profile?.languages_spoken || [],
   });
 
-  // Fetch user progress and course completions
-  const { data: userProgress } = useQuery({
-    queryKey: ['user-progress', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  const { data: courseCompletions } = useQuery({
-    queryKey: ['course-completions', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      
-      const { data, error } = await supabase
-        .from('course_completions')
-        .select(`
-          *,
-          courses (title, level)
-        `)
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -131,11 +94,6 @@ const Profile = () => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
-  const calculateOverallProgress = () => {
-    if (!userProgress || userProgress.length === 0) return 0;
-    const totalProgress = userProgress.reduce((sum, progress) => sum + (progress.progress_percentage || 0), 0);
-    return Math.round(totalProgress / userProgress.length);
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -164,7 +122,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="max-w-2xl mx-auto">
           {/* Personal Information */}
           <Card>
             <CardHeader>
@@ -344,70 +302,6 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Learning Progress */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Learning Progress</CardTitle>
-              <CardDescription>Your course progress and achievements</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Overall Progress</span>
-                  <span className="text-sm text-muted-foreground">{calculateOverallProgress()}%</span>
-                </div>
-                <Progress value={calculateOverallProgress()} className="h-2" />
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-medium mb-3">Course Completions</h4>
-                {courseCompletions && courseCompletions.length > 0 ? (
-                  <div className="space-y-2">
-                    {courseCompletions.map((completion) => (
-                      <div key={completion.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{completion.courses?.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Level {completion.courses?.level}
-                          </p>
-                        </div>
-                        <Badge variant="default">Completed</Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No courses completed yet</p>
-                )}
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-medium mb-3">Current Progress</h4>
-                {userProgress && userProgress.length > 0 ? (
-                  <div className="space-y-3">
-                    {userProgress.slice(0, 3).map((progress) => (
-                      <div key={progress.id} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm font-medium">
-                            Course Progress
-                          </p>
-                          <span className="text-sm text-muted-foreground">
-                            {progress.progress_percentage || 0}%
-                          </span>
-                        </div>
-                        <Progress value={progress.progress_percentage || 0} className="h-1" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">No progress tracked yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
   );
