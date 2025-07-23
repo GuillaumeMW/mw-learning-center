@@ -96,7 +96,7 @@ const Profile = () => {
 
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-6">
           <Button 
             variant="ghost" 
@@ -122,7 +122,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div className="max-w-2xl mx-auto">
+        <div className="space-y-6">
           {/* Personal Information */}
           <Card>
             <CardHeader>
@@ -301,7 +301,6 @@ const Profile = () => {
               </Button>
             </CardContent>
           </Card>
-
         </div>
       </div>
   );
