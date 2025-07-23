@@ -49,6 +49,7 @@ const UsersManagement = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -202,8 +203,18 @@ const UsersManagement = () => {
   };
 
   useEffect(() => {
-    fetchUsers(sortConfig, currentPage, itemsPerPage, searchTerm);
-  }, [sortConfig, currentPage, itemsPerPage, searchTerm]);
+    const timerId = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    fetchUsers(sortConfig, currentPage, itemsPerPage, debouncedSearchTerm);
+  }, [sortConfig, currentPage, itemsPerPage, debouncedSearchTerm]);
 
   if (loading) {
     return (
