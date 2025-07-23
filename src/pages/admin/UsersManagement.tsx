@@ -13,6 +13,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Loader2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -33,22 +42,44 @@ interface UserData {
 const UsersManagement = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'created_at', direction: 'desc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalUsersCount, setTotalUsersCount] = useState(0);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (
+    currentSortConfig: { key: string; direction: 'asc' | 'desc' },
+    page: number,
+    limit: number,
+    searchTerm: string
+  ) => {
+    setLoading(true);
     try {
+      const offset = (page - 1) * limit;
+
       // Fetch user profiles (for name and created_at)
-      const { data: profilesData, error: profilesError } = await supabase
+      let dbSortKey = currentSortConfig.key;
+      if (currentSortConfig.key === 'name') {
+        dbSortKey = 'last_name';
+      }
+
+      let profilesQuery = supabase
         .from('profiles')
         .select(`
           user_id,
           first_name,
           last_name,
           created_at
-        `);
+        `, { count: 'exact' })
+        .range(offset, offset + limit - 1)
+        .order(dbSortKey, { ascending: currentSortConfig.direction === 'asc' });
 
+      const { data: profilesData, count: profilesCount, error: profilesError } = await profilesQuery;
       if (profilesError) throw profilesError;
+
+      setTotalUsersCount(profilesCount || 0);
 
       // Get user progress data - only completed items
       const { data: progressData, error: progressError } = await supabase
@@ -102,11 +133,11 @@ const UsersManagement = () => {
 
       // Process the data
       const usersData: UserData[] = profilesData?.map(profile => {
-        const userProgress = progressData?.filter(p => p.user_id === profile.user_id) || [];
+        const userProgressFiltered = progressData?.filter(p => p.user_id === profile.user_id) || [];
         const userCompletions = completionsData?.filter(c => c.user_id === profile.user_id) || [];
 
         // Calculate overall progress based on completed subsections in available courses
-        const completedSubsections = userProgress.filter(p =>
+        const completedSubsections = userProgressFiltered.filter(p =>
           p.subsection_id &&
           p.completed_at &&
           availableCourseIds.includes(p.course_id)
@@ -144,10 +175,20 @@ const UsersManagement = () => {
     }
   };
 
+  const handleSort = (key: string) => {
+    setSortConfig(prevSortConfig => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (prevSortConfig.key === key && prevSortConfig.direction === 'asc') {
+        direction = 'desc';
+      }
+      setCurrentPage(1);
+      return { key, direction };
+    });
+  };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(sortConfig, currentPage, itemsPerPage, '');
+  }, [sortConfig, currentPage, itemsPerPage]);
 
   if (loading) {
     return (
@@ -166,7 +207,7 @@ const UsersManagement = () => {
         <h1 className="text-3xl font-bold">User Management</h1>
         <div className="flex items-center gap-2 text-muted-foreground">
           <Users className="h-4 w-4" />
-          <span>{users.length} total users</span>
+          <span>{totalUsersCount} total users</span>
         </div>
       </div>
 
@@ -178,7 +219,7 @@ const UsersManagement = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
+            <div className="text-2xl font-bold">{totalUsersCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -192,8 +233,24 @@ const UsersManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Registration Date</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('created_at')}
+                >
+                  Registration Date
+                  {sortConfig.key === 'created_at' && (
+                    sortConfig.direction === 'asc' ? ' ↑' : ' ↓'
+                  )}
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-foreground"
+                  onClick={() => handleSort('last_name')}
+                >
+                  Name
+                  {sortConfig.key === 'last_name' && (
+                    sortConfig.direction === 'asc' ? ' ↑' : ' ↓'
+                  )}
+                </TableHead>
                 <TableHead>Current Course Progress</TableHead>
                 <TableHead>Completion Rate</TableHead>
               </TableRow>
@@ -253,6 +310,53 @@ const UsersManagement = () => {
             </TableBody>
           </Table>
         </CardContent>
+        
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-end space-x-2 p-4">
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <span>Rows per page:</span>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+              {Array.from({ length: Math.ceil(totalUsersCount / itemsPerPage) }).map((_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink
+                    isActive={currentPage === i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className="cursor-pointer"
+                  >
+                    {i + 1}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              <PaginationNext 
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalUsersCount / itemsPerPage), prev + 1))}
+                className={currentPage === Math.ceil(totalUsersCount / itemsPerPage) ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+              />
+            </PaginationContent>
+          </Pagination>
+        </div>
       </Card>
     </div>
   );
