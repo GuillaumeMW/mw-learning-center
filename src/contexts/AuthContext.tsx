@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { Profile, AppRole } from '@/types/auth';
+import { Profile, AppRole, SignUpData } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -15,12 +15,8 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
 }
 
-interface SignUpData {
-  first_name: string;
-  last_name: string;
-  address: string;
-  employment_status: string;
-}
+// Remove local interface and import from types
+// SignUpData is now imported from types/auth.ts
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

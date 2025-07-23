@@ -7,7 +7,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, GraduationCap, Mail, Lock, User, MapPin, Briefcase } from "lucide-react";
+import { Eye, EyeOff, GraduationCap, Mail, Lock, User, MapPin, Briefcase, Phone, Globe } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AuthPageProps {
   defaultTab?: 'login' | 'signup';
@@ -24,8 +25,17 @@ const AuthPage = ({ defaultTab = 'login' }: AuthPageProps) => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [address, setAddress] = useState('');
-  const [employmentStatus, setEmploymentStatus] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [provinceState, setProvinceState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('Canada');
+  const [employmentStatus, setEmploymentStatus] = useState<'employed' | 'self_employed' | 'student' | 'unemployed' | 'other'>('other');
+  const [occupation, setOccupation] = useState('None of the Above – Other');
+  const [serviceRegions, setServiceRegions] = useState('');
+  const [languagesSpoken, setLanguagesSpoken] = useState('');
 
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
@@ -68,8 +78,17 @@ const AuthPage = ({ defaultTab = 'login' }: AuthPageProps) => {
     const { error } = await signUp(email, password, {
       first_name: firstName,
       last_name: lastName,
-      address,
+      phone_number: phoneNumber,
+      address_line1: addressLine1,
+      address_line2: addressLine2,
+      city: city,
+      province_state: provinceState,
+      postal_code: postalCode,
+      country: country,
       employment_status: employmentStatus,
+      occupation: occupation as any,
+      service_regions: serviceRegions.split(',').map(s => s.trim()).filter(Boolean),
+      languages_spoken: languagesSpoken.split(',').map(l => l.trim()).filter(Boolean),
     });
 
     if (error) {
@@ -95,8 +114,17 @@ const AuthPage = ({ defaultTab = 'login' }: AuthPageProps) => {
     setPassword('');
     setFirstName('');
     setLastName('');
-    setAddress('');
-    setEmploymentStatus('');
+    setPhoneNumber('');
+    setAddressLine1('');
+    setAddressLine2('');
+    setCity('');
+    setProvinceState('');
+    setPostalCode('');
+    setCountry('Canada');
+    setEmploymentStatus('other');
+    setOccupation('None of the Above – Other');
+    setServiceRegions('');
+    setLanguagesSpoken('');
     setError(null);
   };
 
@@ -270,32 +298,130 @@ const AuthPage = ({ defaultTab = 'login' }: AuthPageProps) => {
 
                 <Separator />
 
+                {/* Phone Number */}
                 <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="address"
-                      placeholder="123 Main St, City, State"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
+                      id="phoneNumber"
+                      placeholder="+1 (555) 123-4567"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
                       className="pl-10"
                     />
                   </div>
                 </div>
 
+                {/* Address Fields */}
                 <div className="space-y-2">
-                  <Label htmlFor="employment">Current Employment Status</Label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Label>Address</Label>
+                  <Input
+                    placeholder="Address Line 1"
+                    value={addressLine1}
+                    onChange={(e) => setAddressLine1(e.target.value)}
+                    className="mb-2"
+                  />
+                  <Input
+                    placeholder="Address Line 2 (Optional)"
+                    value={addressLine2}
+                    onChange={(e) => setAddressLine2(e.target.value)}
+                    className="mb-2"
+                  />
+                  <div className="grid grid-cols-2 gap-2 mb-2">
                     <Input
-                      id="employment"
-                      placeholder="e.g., Real Estate Agent, Student, etc."
-                      value={employmentStatus}
-                      onChange={(e) => setEmploymentStatus(e.target.value)}
+                      placeholder="City"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Province/State"
+                      value={provinceState}
+                      onChange={(e) => setProvinceState(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Postal Code"
+                      value={postalCode}
+                      onChange={(e) => setPostalCode(e.target.value)}
+                    />
+                    <Input
+                      placeholder="Country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Employment Status Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="employmentStatus">Current Employment Status</Label>
+                  <Select value={employmentStatus} onValueChange={(value: typeof employmentStatus) => setEmploymentStatus(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employed">Employed</SelectItem>
+                      <SelectItem value="self_employed">Self-Employed</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="unemployed">Unemployed</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Occupation Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="occupation">Current/Past Occupation</Label>
+                  <Select value={occupation} onValueChange={setOccupation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select occupation" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {['Real Estate Agent', 'Mortgage Broker', 'Home Stager', 'Property Manager', 'Insurance Broker', 'Interior Designer', 'Professional Organizer', 'Concierge / Lifestyle Manager', 'Virtual Assistant', 'Customer Service Representative', 'Sales Representative', 'Freelancer / Self-Employed', 'Relocation Specialist / Retired Mover', 'Retired Professional', 'Student', 'Stay-at-Home Parent', 'Hospitality Worker (e.g., hotel, Airbnb host)', 'Event Planner', 'Social Worker / Community Support', 'Construction / Renovation Worker', 'None of the Above – Other'].map(occ => (
+                        <SelectItem key={occ} value={occ}>
+                          {occ}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Service Regions */}
+                <div className="space-y-2">
+                  <Label htmlFor="serviceRegions">Preferred Service Regions (comma-separated)</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="serviceRegions"
+                      placeholder="e.g., Montreal, Toronto, Vancouver"
+                      value={serviceRegions}
+                      onChange={(e) => setServiceRegions(e.target.value)}
                       className="pl-10"
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    List cities or regions where you plan to offer relocation services.
+                  </p>
+                </div>
+
+                {/* Languages Spoken */}
+                <div className="space-y-2">
+                  <Label htmlFor="languagesSpoken">Languages Spoken (comma-separated)</Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="languagesSpoken"
+                      placeholder="e.g., English, French, Spanish"
+                      value={languagesSpoken}
+                      onChange={(e) => setLanguagesSpoken(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    List all languages you are fluent in.
+                  </p>
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
