@@ -22,7 +22,9 @@ import {
   TrendingUp,
   Target,
   Timer,
-  Loader2
+  Loader2,
+  Phone,
+  Globe
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -353,7 +355,17 @@ const UserDetail = () => {
                     <span className="font-medium">Name:</span>
                     <span>{userData.profile.first_name} {userData.profile.last_name}</span>
                   </div>
-                  
+
+                  {/* Phone Number */}
+                  {userData.profile.phone_number && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Phone:</span>
+                      <span>{userData.profile.phone_number}</span>
+                    </div>
+                  )}
+
+                  {/* Employment Status */}
                   <div className="flex items-center gap-2">
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Employment:</span>
@@ -363,7 +375,16 @@ const UserDetail = () => {
                       <span className="text-muted-foreground">Not specified</span>
                     )}
                   </div>
-                  
+
+                  {/* Occupation */}
+                  {userData.profile.occupation && (
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Occupation:</span>
+                      <Badge variant="secondary">{userData.profile.occupation}</Badge>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Joined:</span>
@@ -379,24 +400,46 @@ const UserDetail = () => {
                       {userData.role}
                     </Badge>
                   </div>
-                  
-                  {(userData.profile.address_line1 || userData.profile.city) && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
+
+                  {/* Detailed Address */}
+                  {(userData.profile.address_line1 || userData.profile.city || userData.profile.province_state || userData.profile.country) && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                       <span className="font-medium">Address:</span>
                       <span className="text-sm">
-                        {[
-                          userData.profile.address_line1,
-                          userData.profile.address_line2,
-                          userData.profile.city,
-                          userData.profile.province_state,
-                          userData.profile.postal_code,
-                          userData.profile.country
-                        ].filter(Boolean).join(', ')}
+                        {userData.profile.address_line1}{userData.profile.address_line2 ? `, ${userData.profile.address_line2}` : ''}<br/>
+                        {userData.profile.city}, {userData.profile.province_state} {userData.profile.postal_code}<br/>
+                        {userData.profile.country}
                       </span>
                     </div>
                   )}
-                  
+
+                  {/* Service Regions */}
+                  {userData.profile.service_regions && userData.profile.service_regions.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Service Regions:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {userData.profile.service_regions.map((region, i) => (
+                          <Badge key={i} variant="outline">{region}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Languages Spoken */}
+                  {userData.profile.languages_spoken && userData.profile.languages_spoken.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Languages:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {userData.profile.languages_spoken.map((lang, i) => (
+                          <Badge key={i} variant="outline">{lang}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Timer className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">Avg. Completion Time:</span>
