@@ -22,7 +22,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2, Users, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { formatDistanceToNow } from 'date-fns';
 
 interface UserData {
@@ -31,6 +32,7 @@ interface UserData {
   profile: {
     first_name: string;
     last_name: string;
+    phone_number: string | null;
   } | null;
   course_progress: {
     total_courses: number;
@@ -46,6 +48,7 @@ const UsersManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalUsersCount, setTotalUsersCount] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -71,10 +74,21 @@ const UsersManagement = () => {
           user_id,
           first_name,
           last_name,
-          created_at
-        `, { count: 'exact' })
-        .range(offset, offset + limit - 1)
-        .order(dbSortKey, { ascending: currentSortConfig.direction === 'asc' });
+          created_at,
+          phone_number
+        `, { count: 'exact' });
+
+      // Apply search filter if searchTerm exists and is not empty
+      if (searchTerm.trim()) {
+        const searchPattern = `%${searchTerm.trim().toLowerCase()}%`;
+        profilesQuery = profilesQuery.or(
+          `first_name.ilike.${searchPattern},last_name.ilike.${searchPattern},phone_number.ilike.${searchPattern}`
+        );
+      }
+
+      profilesQuery = profilesQuery
+        .order(dbSortKey, { ascending: currentSortConfig.direction === 'asc' })
+        .range(offset, offset + limit - 1);
 
       const { data: profilesData, count: profilesCount, error: profilesError } = await profilesQuery;
       if (profilesError) throw profilesError;
@@ -153,6 +167,7 @@ const UsersManagement = () => {
           profile: {
             first_name: profile.first_name,
             last_name: profile.last_name,
+            phone_number: profile.phone_number,
           },
           course_progress: {
             total_courses: availableCourseIds.length,
@@ -187,8 +202,8 @@ const UsersManagement = () => {
   };
 
   useEffect(() => {
-    fetchUsers(sortConfig, currentPage, itemsPerPage, '');
-  }, [sortConfig, currentPage, itemsPerPage]);
+    fetchUsers(sortConfig, currentPage, itemsPerPage, searchTerm);
+  }, [sortConfig, currentPage, itemsPerPage, searchTerm]);
 
   if (loading) {
     return (
@@ -205,9 +220,20 @@ const UsersManagement = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">User Management</h1>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Users className="h-4 w-4" />
-          <span>{totalUsersCount} total users</span>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-[250px]"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Users className="h-4 w-4" />
+            <span>{totalUsersCount} total users</span>
+          </div>
         </div>
       </div>
 
