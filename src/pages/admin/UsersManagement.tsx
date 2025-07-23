@@ -10,36 +10,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, Users, UserCheck, Clock } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface UserData {
   id: string;
-  email: string;
   created_at: string;
-  last_sign_in_at: string | null;
   profile: {
     first_name: string;
     last_name: string;
-    employment_status: string | null;
   } | null;
-  role: 'student' | 'admin';
   course_progress: {
     total_courses: number;
     completed_courses: number;
     overall_progress: number;
   };
-  completed_subsections?: number; // For debugging
 }
 
 const UsersManagement = () => {
@@ -50,25 +38,17 @@ const UsersManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      // First get all users with their profiles and roles
+      // Fetch user profiles (for name and created_at)
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           user_id,
           first_name,
           last_name,
-          employment_status,
           created_at
         `);
 
       if (profilesError) throw profilesError;
-
-      // Get user roles separately
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
-
-      if (rolesError) throw rolesError;
 
       // Get user progress data - only completed items
       const { data: progressData, error: progressError } = await supabase
@@ -93,17 +73,20 @@ const UsersManagement = () => {
 
       const availableCourseIds = availableCoursesData?.map(c => c.id) || [];
 
-      // Get subsections for available courses
+      // Get subsections for available courses (needed for overall progress calculation)
+      const { data: sectionsForSubsections, error: sectionsForSubsectionsError } = await supabase
+          .from('sections')
+          .select('id')
+          .in('course_id', availableCourseIds);
+
+      if (sectionsForSubsectionsError) throw sectionsForSubsectionsError;
+
+      const sectionIdsForSubsections = sectionsForSubsections?.map(s => s.id) || [];
+
       const { data: subsectionsData, error: subsectionsError } = await supabase
         .from('subsections')
         .select('id, section_id')
-        .in('section_id', 
-          await supabase
-            .from('sections')
-            .select('id')
-            .in('course_id', availableCourseIds)
-            .then(res => res.data?.map(s => s.id) || [])
-        );
+        .in('section_id', sectionIdsForSubsections);
 
       if (subsectionsError) throw subsectionsError;
 
@@ -121,36 +104,30 @@ const UsersManagement = () => {
       const usersData: UserData[] = profilesData?.map(profile => {
         const userProgress = progressData?.filter(p => p.user_id === profile.user_id) || [];
         const userCompletions = completionsData?.filter(c => c.user_id === profile.user_id) || [];
-        const userRole = rolesData?.find(r => r.user_id === profile.user_id);
-        
+
         // Calculate overall progress based on completed subsections in available courses
-        const completedSubsections = userProgress.filter(p => 
-          p.subsection_id && 
+        const completedSubsections = userProgress.filter(p =>
+          p.subsection_id &&
           p.completed_at &&
           availableCourseIds.includes(p.course_id)
         ).length;
-        
-        const overallProgress = totalAvailableSubsections > 0 
+
+        const overallProgress = totalAvailableSubsections > 0
           ? Math.round((completedSubsections / totalAvailableSubsections) * 100)
           : 0;
 
         return {
           id: profile.user_id,
-          email: '', // We'll get this from auth metadata if needed
           created_at: profile.created_at,
-          last_sign_in_at: null, // This would come from auth.users if accessible
           profile: {
             first_name: profile.first_name,
             last_name: profile.last_name,
-            employment_status: profile.employment_status,
           },
-          role: userRole?.role || 'student',
           course_progress: {
             total_courses: availableCourseIds.length,
             completed_courses: userCompletions.length,
             overall_progress: overallProgress,
           },
-          completed_subsections: completedSubsections, // Add this for debugging
         };
       }) || [];
 
@@ -167,33 +144,6 @@ const UsersManagement = () => {
     }
   };
 
-  const handleRoleChange = async (userId: string, newRole: 'student' | 'admin') => {
-    try {
-      const { error } = await supabase
-        .from('user_roles')
-        .update({ role: newRole })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      // Update local state
-      setUsers(prev => prev.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      ));
-
-      toast({
-        title: 'Success',
-        description: `User role updated to ${newRole}`,
-      });
-    } catch (error) {
-      console.error('Error updating role:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update user role',
-        variant: 'destructive',
-      });
-    }
-  };
 
   useEffect(() => {
     fetchUsers();
@@ -221,7 +171,7 @@ const UsersManagement = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -229,30 +179,6 @@ const UsersManagement = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{users.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Students</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter(user => user.role === 'student').length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Administrators</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users.filter(user => user.role === 'admin').length}
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -266,22 +192,27 @@ const UsersManagement = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Employment Status</TableHead>
-                <TableHead>Role</TableHead>
                 <TableHead>Registration Date</TableHead>
-                <TableHead>Course Progress</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Current Course Progress</TableHead>
                 <TableHead>Completion Rate</TableHead>
-                <TableHead>Subsection Details</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow 
-                  key={user.id} 
+                <TableRow
+                  key={user.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => navigate(`/admin/users/${user.id}`)}
                 >
+                  <TableCell>
+                    <div className="text-sm">
+                      {formatDistanceToNow(new Date(user.created_at), {
+                        addSuffix: true
+                      })}
+                    </div>
+                  </TableCell>
+
                   <TableCell>
                     <div>
                       <div className="font-medium">
@@ -292,57 +223,20 @@ const UsersManagement = () => {
                       </div>
                     </div>
                   </TableCell>
-                  
-                  <TableCell>
-                    {user.profile?.employment_status ? (
-                      <Badge variant="outline">
-                        {user.profile.employment_status}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">Not specified</span>
-                    )}
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={user.role}
-                        onValueChange={(value: 'student' | 'admin') => 
-                          handleRoleChange(user.id, value)
-                        }
-                      >
-                        <SelectTrigger className="w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="student">Student</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div className="text-sm">
-                      {formatDistanceToNow(new Date(user.created_at), { 
-                        addSuffix: true 
-                      })}
-                    </div>
-                  </TableCell>
-                  
+
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span>Overall Progress</span>
                         <span>{user.course_progress.overall_progress}%</span>
                       </div>
-                      <Progress 
-                        value={user.course_progress.overall_progress} 
+                      <Progress
+                        value={user.course_progress.overall_progress}
                         className="h-2"
                       />
                     </div>
                   </TableCell>
-                  
+
                   <TableCell>
                     <div className="text-center">
                       <div className="text-lg font-semibold">
@@ -351,20 +245,6 @@ const UsersManagement = () => {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Courses completed
-                      </div>
-                    </div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div className="text-center">
-                      <div className="text-lg font-semibold">
-                        {user.completed_subsections || 0}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Subsections completed
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        ({user.course_progress.overall_progress}% of available)
                       </div>
                     </div>
                   </TableCell>
