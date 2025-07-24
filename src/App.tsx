@@ -22,6 +22,10 @@ import UserDetail from "./pages/admin/UserDetail";
 import ContentManagement from "./pages/admin/ContentManagement";
 import SubsectionEditor from "./pages/admin/SubsectionEditor";
 import ProgressAnalytics from "./pages/admin/ProgressAnalytics";
+import CertificationReview from "./pages/admin/CertificationReview";
+import CertificationExamPage from "./pages/CertificationExamPage";
+import ContractSigningPage from "./pages/ContractSigningPage";
+import SubscriptionPaymentPage from "./pages/SubscriptionPaymentPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -89,6 +93,7 @@ const App = () => (
                         <Route path="content" element={<ContentManagement />} />
                         <Route path="content/subsection/:sectionId" element={<SubsectionEditor />} />
                         <Route path="analytics" element={<ProgressAnalytics />} />
+                        <Route path="certifications" element={<CertificationReview />} />
                         {/* Future admin routes will go here */}
                       </Routes>
                     </AdminLayout>
@@ -112,6 +117,36 @@ const App = () => (
                 <ProtectedRoute>
                   <Layout>
                     <AccountSettings />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/certification/:level/exam" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CertificationExamPage />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/certification/:level/contract" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ContractSigningPage />
+                  </Layout>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/certification/:level/payment" 
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SubscriptionPaymentPage />
                   </Layout>
                 </ProtectedRoute>
               } 

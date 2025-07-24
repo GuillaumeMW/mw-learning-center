@@ -4,7 +4,8 @@ import {
   LayoutDashboard, 
   Users, 
   BookOpen, 
-  BarChart3 
+  BarChart3,
+  ClipboardCheck
 } from 'lucide-react';
 
 const navigationItems = [
@@ -31,6 +32,12 @@ const navigationItems = [
     href: '/admin/analytics',
     icon: BarChart3,
     description: 'Progress and completion reports'
+  },
+  {
+    name: 'Certifications',
+    href: '/admin/certifications',
+    icon: ClipboardCheck,
+    description: 'Review certification requests'
   }
 ];
 

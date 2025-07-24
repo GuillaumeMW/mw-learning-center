@@ -7,7 +7,8 @@ import {
   BookOpen, 
   TrendingUp, 
   Award,
-  ArrowRight
+  ArrowRight,
+  ClipboardCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +17,7 @@ interface DashboardStats {
   totalUsers: number;
   totalCourses: number;
   totalCompletions: number;
+  pendingCertifications: number;
   recentUsers: Array<{
     id: string;
     first_name: string;
@@ -29,6 +31,7 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalCourses: 0,
     totalCompletions: 0,
+    pendingCertifications: 0,
     recentUsers: []
   });
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,12 @@ const AdminDashboard = () => {
         .from('course_completions')
         .select('*', { count: 'exact', head: true });
 
+      // Fetch pending certifications count
+      const { count: pendingCertificationsCount } = await supabase
+        .from('certification_workflows')
+        .select('*', { count: 'exact', head: true })
+        .eq('admin_approval_status', 'pending');
+
       // Fetch recent users (last 5)
       const { data: recentUsers } = await supabase
         .from('profiles')
@@ -66,6 +75,7 @@ const AdminDashboard = () => {
         totalUsers: usersCount || 0,
         totalCourses: coursesCount || 0,
         totalCompletions: completionsCount || 0,
+        pendingCertifications: pendingCertificationsCount || 0,
         recentUsers: recentUsers || []
       });
     } catch (error) {
@@ -96,6 +106,13 @@ const AdminDashboard = () => {
       icon: TrendingUp,
       href: '/admin/analytics',
       color: 'text-purple-600'
+    },
+    {
+      title: 'Review Certifications',
+      description: `${stats.pendingCertifications} pending approval${stats.pendingCertifications !== 1 ? 's' : ''}`,
+      icon: ClipboardCheck,
+      href: '/admin/certifications',
+      color: 'text-orange-600'
     }
   ];
 
