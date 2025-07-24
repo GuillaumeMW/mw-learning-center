@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      certification_workflows: {
+        Row: {
+          admin_approval_status: Database["public"]["Enums"]["app_admin_approval_status"]
+          completed_at: string | null
+          contract_doc_url: string | null
+          contract_status: Database["public"]["Enums"]["app_contract_status"]
+          course_id: string
+          created_at: string
+          current_step: Database["public"]["Enums"]["app_workflow_step"]
+          exam_results_json: Json | null
+          exam_status: Database["public"]["Enums"]["app_exam_status"]
+          exam_submission_url: string | null
+          id: string
+          level: number
+          stripe_checkout_session_id: string | null
+          subscription_status: Database["public"]["Enums"]["app_subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_approval_status?: Database["public"]["Enums"]["app_admin_approval_status"]
+          completed_at?: string | null
+          contract_doc_url?: string | null
+          contract_status?: Database["public"]["Enums"]["app_contract_status"]
+          course_id: string
+          created_at?: string
+          current_step?: Database["public"]["Enums"]["app_workflow_step"]
+          exam_results_json?: Json | null
+          exam_status?: Database["public"]["Enums"]["app_exam_status"]
+          exam_submission_url?: string | null
+          id?: string
+          level: number
+          stripe_checkout_session_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["app_subscription_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_approval_status?: Database["public"]["Enums"]["app_admin_approval_status"]
+          completed_at?: string | null
+          contract_doc_url?: string | null
+          contract_status?: Database["public"]["Enums"]["app_contract_status"]
+          course_id?: string
+          created_at?: string
+          current_step?: Database["public"]["Enums"]["app_workflow_step"]
+          exam_results_json?: Json | null
+          exam_status?: Database["public"]["Enums"]["app_exam_status"]
+          exam_submission_url?: string | null
+          id?: string
+          level?: number
+          stripe_checkout_session_id?: string | null
+          subscription_status?: Database["public"]["Enums"]["app_subscription_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certification_workflows_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           content: string
@@ -464,12 +529,24 @@ export type Database = {
       }
     }
     Enums: {
+      app_admin_approval_status: "pending" | "approved" | "rejected"
+      app_contract_status:
+        | "not_required"
+        | "pending_signing"
+        | "signed"
+        | "rejected"
       app_employment_status:
         | "employed"
         | "self_employed"
         | "student"
         | "unemployed"
         | "other"
+      app_exam_status:
+        | "pending_submission"
+        | "submitted"
+        | "pending_review"
+        | "passed"
+        | "failed"
       app_occupation:
         | "Real Estate Agent"
         | "Mortgage Broker"
@@ -493,6 +570,17 @@ export type Database = {
         | "Construction / Renovation Worker"
         | "None of the Above – Other"
       app_role: "student" | "admin"
+      app_subscription_status:
+        | "not_required"
+        | "pending_payment"
+        | "paid"
+        | "cancelled"
+      app_workflow_step:
+        | "exam"
+        | "contract"
+        | "payment"
+        | "approval"
+        | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -620,12 +708,26 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_admin_approval_status: ["pending", "approved", "rejected"],
+      app_contract_status: [
+        "not_required",
+        "pending_signing",
+        "signed",
+        "rejected",
+      ],
       app_employment_status: [
         "employed",
         "self_employed",
         "student",
         "unemployed",
         "other",
+      ],
+      app_exam_status: [
+        "pending_submission",
+        "submitted",
+        "pending_review",
+        "passed",
+        "failed",
       ],
       app_occupation: [
         "Real Estate Agent",
@@ -651,6 +753,19 @@ export const Constants = {
         "None of the Above – Other",
       ],
       app_role: ["student", "admin"],
+      app_subscription_status: [
+        "not_required",
+        "pending_payment",
+        "paid",
+        "cancelled",
+      ],
+      app_workflow_step: [
+        "exam",
+        "contract",
+        "payment",
+        "approval",
+        "completed",
+      ],
     },
   },
 } as const
