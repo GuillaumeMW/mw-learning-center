@@ -577,9 +577,9 @@ export type Database = {
         | "cancelled"
       app_workflow_step:
         | "exam"
+        | "approval"
         | "contract"
         | "payment"
-        | "approval"
         | "completed"
     }
     CompositeTypes: {
@@ -761,9 +761,9 @@ export const Constants = {
       ],
       app_workflow_step: [
         "exam",
+        "approval",
         "contract",
         "payment",
-        "approval",
         "completed",
       ],
     },
