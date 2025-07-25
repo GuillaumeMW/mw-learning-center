@@ -23,6 +23,7 @@ const CertificationExamPage = () => {
   const [examUrl, setExamUrl] = useState<string>('');
   const [workflow, setWorkflow] = useState<CertificationWorkflow | null>(null);
   const [allSectionsCompleted, setAllSectionsCompleted] = useState(false);
+  const [course, setCourse] = useState<any>(null);
 
   useEffect(() => {
     if (user && level) {
@@ -34,10 +35,10 @@ const CertificationExamPage = () => {
     try {
       const levelNum = parseInt(level!);
       
-      // Check if all sections are completed for this level
+      // Get course data including exam configuration
       const { data: courseData } = await supabase
         .from('courses')
-        .select('id')
+        .select('id, exam_instructions, exam_url, exam_duration_minutes')
         .eq('level', levelNum)
         .single();
 
@@ -47,9 +48,7 @@ const CertificationExamPage = () => {
           .select(`
             id,
             subsections (
-              id,
-              title,
-              quiz_url
+              id
             )
           `)
           .eq('course_id', courseData.id);
@@ -66,14 +65,11 @@ const CertificationExamPage = () => {
         const allCompleted = allSubsectionIds.length > 0 && allSubsectionIds.every(id => completedSubsectionIds.includes(id));
         setAllSectionsCompleted(allCompleted);
 
-        // Find exam URL from subsections (look for exam type or specific subsection)
-        const examSubsection = sectionsData?.flatMap(s => s.subsections).find(sub => 
-          sub.title.toLowerCase().includes('exam') || sub.quiz_url
-        );
+        // Use exam URL from course configuration
+        setExamUrl(courseData.exam_url || '');
         
-        if (examSubsection?.quiz_url) {
-          setExamUrl(examSubsection.quiz_url);
-        }
+        // Store course data for instructions
+        setCourse(courseData);
       }
 
       // Fetch certification workflow
@@ -234,13 +230,16 @@ const CertificationExamPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ul className="list-disc list-inside space-y-2 text-sm">
-                <li>The exam must be completed in one session</li>
-                <li>You will have unlimited time to complete the exam</li>
-                <li>Make sure you have a stable internet connection</li>
-                <li>All questions must be answered before submission</li>
-                <li>Results will be reviewed by our team within 2-3 business days</li>
-              </ul>
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground whitespace-pre-line">
+                  {course?.exam_instructions || 'Please complete this certification exam to demonstrate your knowledge of the Relocation Specialist program.'}
+                </div>
+                {course?.exam_duration_minutes && (
+                  <p className="text-sm font-medium">
+                    Recommended time: {course.exam_duration_minutes} minutes
+                  </p>
+                )}
+              </div>
               
               <div className="pt-4">
                 <Button 
