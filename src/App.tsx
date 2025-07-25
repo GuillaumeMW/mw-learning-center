@@ -23,7 +23,6 @@ import ContentManagement from "./pages/admin/ContentManagement";
 import SubsectionEditor from "./pages/admin/SubsectionEditor";
 import ProgressAnalytics from "./pages/admin/ProgressAnalytics";
 import CertificationReview from "./pages/admin/CertificationReview";
-import CertificationExamManagement from "./pages/admin/CertificationExamManagement";
 import CertificationExamPage from "./pages/CertificationExamPage";
 import ContractSigningPage from "./pages/ContractSigningPage";
 import SubscriptionPaymentPage from "./pages/SubscriptionPaymentPage";
@@ -95,7 +94,6 @@ const App = () => (
                         <Route path="content/subsection/:sectionId" element={<SubsectionEditor />} />
                         <Route path="analytics" element={<ProgressAnalytics />} />
                         <Route path="certifications" element={<CertificationReview />} />
-                        <Route path="exam-management" element={<CertificationExamManagement />} />
                         {/* Future admin routes will go here */}
                       </Routes>
                     </AdminLayout>

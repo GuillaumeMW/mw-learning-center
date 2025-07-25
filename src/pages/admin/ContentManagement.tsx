@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Course, Section, Subsection } from '@/types/course';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -120,6 +120,8 @@ const ContentManagement = () => {
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [showSectionForm, setShowSectionForm] = useState(false);
+  const [examCourses, setExamCourses] = useState<any[]>([]);
+  const [savingExam, setSavingExam] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -154,6 +156,7 @@ const ContentManagement = () => {
 
   useEffect(() => {
     fetchData();
+    fetchExamCourses();
   }, []);
 
   // Sync URL params with local state
@@ -196,6 +199,25 @@ const ContentManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchExamCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('id, title, level, exam_instructions, exam_url, exam_duration_minutes')
+        .order('level');
+
+      if (error) throw error;
+      setExamCourses(data || []);
+    } catch (error) {
+      console.error('Error fetching exam courses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load exam courses",
+        variant: "destructive",
+      });
     }
   };
 
@@ -391,6 +413,8 @@ const ContentManagement = () => {
       updateUrlParams('sections', selectedCourse);
     } else if (tab === 'subsections' && selectedCourse && selectedSection) {
       updateUrlParams('subsections', selectedCourse, selectedSection);
+    } else if (tab === 'exams') {
+      updateUrlParams('exams');
     }
   };
 
@@ -549,6 +573,50 @@ const ContentManagement = () => {
     }
   };
 
+  const updateExamCourse = async (courseId: string, updates: any) => {
+    setSavingExam(courseId);
+    try {
+      const { error } = await supabase
+        .from('courses')
+        .update(updates)
+        .eq('id', courseId);
+
+      if (error) throw error;
+
+      setExamCourses(prev => prev.map(course => 
+        course.id === courseId ? { ...course, ...updates } : course
+      ));
+
+      toast({
+        title: "Success",
+        description: "Exam settings updated successfully",
+      });
+    } catch (error) {
+      console.error('Error updating exam course:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update exam settings",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingExam(null);
+    }
+  };
+
+  const handleExamSave = (course: any) => {
+    updateExamCourse(course.id, {
+      exam_instructions: course.exam_instructions,
+      exam_url: course.exam_url,
+      exam_duration_minutes: course.exam_duration_minutes,
+    });
+  };
+
+  const updateExamCourseState = (courseId: string, field: string, value: string | number) => {
+    setExamCourses(prev => prev.map(course => 
+      course.id === courseId ? { ...course, [field]: value } : course
+    ));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -571,10 +639,11 @@ const ContentManagement = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="courses">Courses</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
           <TabsTrigger value="subsections">Subsections</TabsTrigger>
+          <TabsTrigger value="exams">Exams</TabsTrigger>
         </TabsList>
 
         <TabsContent value="courses" className="space-y-4">
@@ -852,6 +921,82 @@ const ContentManagement = () => {
                   Select a section to view its subsections
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="exams" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Certification Exam Management</CardTitle>
+              <CardDescription>
+                Configure exam instructions, URLs, and settings for each certification level.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {examCourses.map((course) => (
+                  <Card key={course.id}>
+                    <CardHeader>
+                      <CardTitle>Level {course.level}: {course.title}</CardTitle>
+                      <CardDescription>
+                        Configure the certification exam for this level
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`url-${course.id}`}>Exam URL (Google Form)</Label>
+                        <Input
+                          id={`url-${course.id}`}
+                          value={course.exam_url || ''}
+                          onChange={(e) => updateExamCourseState(course.id, 'exam_url', e.target.value)}
+                          placeholder="https://docs.google.com/forms/d/e/..."
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`duration-${course.id}`}>Recommended Duration (minutes)</Label>
+                        <Input
+                          id={`duration-${course.id}`}
+                          type="number"
+                          value={course.exam_duration_minutes || ''}
+                          onChange={(e) => updateExamCourseState(course.id, 'exam_duration_minutes', parseInt(e.target.value) || 0)}
+                          placeholder="45"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`instructions-${course.id}`}>Exam Instructions</Label>
+                        <Textarea
+                          id={`instructions-${course.id}`}
+                          value={course.exam_instructions || ''}
+                          onChange={(e) => updateExamCourseState(course.id, 'exam_instructions', e.target.value)}
+                          placeholder="Enter instructions for students taking this exam..."
+                          rows={6}
+                        />
+                      </div>
+
+                      <Button 
+                        onClick={() => handleExamSave(course)}
+                        disabled={savingExam === course.id}
+                        className="w-full"
+                      >
+                        {savingExam === course.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

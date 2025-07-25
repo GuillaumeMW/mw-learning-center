@@ -38,12 +38,6 @@ const navigationItems = [
     href: '/admin/certifications',
     icon: ClipboardCheck,
     description: 'Review certification requests'
-  },
-  {
-    name: 'Exam Management',
-    href: '/admin/exam-management',
-    icon: BookOpen,
-    description: 'Manage certification exams'
   }
 ];
 
