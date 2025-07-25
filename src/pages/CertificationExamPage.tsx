@@ -65,8 +65,14 @@ const CertificationExamPage = () => {
         const allCompleted = allSubsectionIds.length > 0 && allSubsectionIds.every(id => completedSubsectionIds.includes(id));
         setAllSectionsCompleted(allCompleted);
 
-        // Use exam URL from course configuration
-        setExamUrl(courseData.exam_url || '');
+        // Construct the pre-filled Google Form URL
+        let prefilledExamUrl = courseData.exam_url || '';
+        if (user?.id && level && prefilledExamUrl) {
+          const userIdEntryId = "entry.1277700754"; // Google Form entry ID for user ID
+          const levelEntryId = "entry.1742429722";   // Google Form entry ID for certification level
+          prefilledExamUrl = `${prefilledExamUrl}?${userIdEntryId}=${user.id}&${levelEntryId}=${level}`;
+        }
+        setExamUrl(prefilledExamUrl);
         
         // Store course data for instructions
         setCourse(courseData);
