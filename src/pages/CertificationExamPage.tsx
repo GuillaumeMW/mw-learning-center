@@ -70,7 +70,13 @@ const CertificationExamPage = () => {
         if (user?.id && level && prefilledExamUrl) {
           const userIdEntryId = "entry.1277700754"; // Google Form entry ID for user ID
           const levelEntryId = "entry.1742429722";   // Google Form entry ID for certification level
-          prefilledExamUrl = `${prefilledExamUrl}?${userIdEntryId}=${user.id}&${levelEntryId}=${level}`;
+          
+          // Debug: log the values being used
+          console.log('User ID:', user.id);
+          console.log('Level:', level);
+          console.log('Pre-filled URL:', `${prefilledExamUrl}?${userIdEntryId}=${encodeURIComponent(user.id)}&${levelEntryId}=${level}`);
+          
+          prefilledExamUrl = `${prefilledExamUrl}?${userIdEntryId}=${encodeURIComponent(user.id)}&${levelEntryId}=${level}`;
         }
         setExamUrl(prefilledExamUrl);
         
