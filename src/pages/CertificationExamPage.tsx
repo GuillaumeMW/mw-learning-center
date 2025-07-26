@@ -267,24 +267,6 @@ const CertificationExamPage = () => {
           </Card>
         )}
 
-        {/* Exam Content */}
-        {canTakeExam && examUrl && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Certification Exam</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-[4/3] w-full">
-                <iframe
-                  src={examUrl}
-                  className="w-full h-full border-0 rounded-lg"
-                  title={`Level ${level} Certification Exam`}
-                  sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* No Exam URL Warning */}
         {canTakeExam && !examUrl && (
