@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, ClipboardCheck, CheckCircle, XCircle, Eye, User } from 'lucide-react';
+import { Loader2, ClipboardCheck, CheckCircle, XCircle, Eye, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,35 +50,121 @@ const CertificationReview = () => {
 
   const fetchPendingCertifications = async () => {
     try {
-      // First get the workflows
-      const { data: workflowData, error: workflowError } = await supabase
+      // Get all users who have completed all sections for any course level
+      // First, get all users who have progress and their course completions
+      const { data: usersWithProgress, error: progressError } = await supabase
+        .from('user_progress')
+        .select(`
+          user_id,
+          course_id,
+          subsection_id,
+          completed_at,
+          profiles!inner (
+            user_id,
+            first_name,
+            last_name
+          ),
+          courses!inner (
+            id,
+            level,
+            title
+          )
+        `)
+        .not('completed_at', 'is', null);
+
+      if (progressError) throw progressError;
+
+      // Get all subsections for each course to check completion
+      const courseIds = [...new Set(usersWithProgress?.map(p => p.course_id))];
+      const { data: allSubsections, error: subsectionError } = await supabase
+        .from('subsections')
+        .select('id, section_id, sections!inner(course_id)')
+        .in('sections.course_id', courseIds);
+
+      if (subsectionError) throw subsectionError;
+
+      // Group subsections by course
+      const subsectionsByCourse = allSubsections?.reduce((acc, sub) => {
+        const courseId = (sub.sections as any).course_id;
+        if (!acc[courseId]) acc[courseId] = [];
+        acc[courseId].push(sub.id);
+        return acc;
+      }, {} as Record<string, string[]>) || {};
+
+      // Find users who have completed all subsections for their course
+      const userCompletionMap = usersWithProgress?.reduce((acc, progress) => {
+        const key = `${progress.user_id}-${progress.course_id}`;
+        if (!acc[key]) {
+          acc[key] = {
+            user_id: progress.user_id,
+            course_id: progress.course_id,
+            level: (progress.courses as any).level,
+            first_name: (progress.profiles as any).first_name,
+            last_name: (progress.profiles as any).last_name,
+            completedSubsections: new Set()
+          };
+        }
+        acc[key].completedSubsections.add(progress.subsection_id);
+        return acc;
+      }, {} as Record<string, any>) || {};
+
+      // Filter users who have completed ALL subsections for their course
+      const eligibleUsers = Object.values(userCompletionMap).filter(user => {
+        const requiredSubsections = subsectionsByCourse[user.course_id] || [];
+        return requiredSubsections.length > 0 && 
+               requiredSubsections.every(subId => user.completedSubsections.has(subId));
+      });
+
+      // Now check existing certification workflows for these users
+      const eligibleUserIds = eligibleUsers.map(u => u.user_id);
+      const { data: existingWorkflows, error: workflowError } = await supabase
         .from('certification_workflows')
         .select('*')
-        .eq('admin_approval_status', 'pending')
-        .order('created_at', { ascending: false });
+        .in('user_id', eligibleUserIds);
 
       if (workflowError) throw workflowError;
 
-      // Then get the profile data for each user
-      const userIds = workflowData?.map(w => w.user_id) || [];
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name')
-        .in('user_id', userIds);
-
-      if (profileError) throw profileError;
-
-      // Combine the data
-      const transformedData = workflowData?.map(workflow => {
-        const profile = profileData?.find(p => p.user_id === workflow.user_id);
-        return {
-          ...workflow,
-          first_name: profile?.first_name || '',
-          last_name: profile?.last_name || ''
-        };
-      }) || [];
+      // Create workflows for users who don't have one yet, or get existing ones
+      const workflowsToDisplay = [];
       
-      setWorkflows(transformedData);
+      for (const user of eligibleUsers) {
+        let workflow = existingWorkflows?.find(w => 
+          w.user_id === user.user_id && w.level === user.level
+        );
+        
+        if (!workflow) {
+          // Create a new workflow for this user
+          const { data: newWorkflow, error: createError } = await supabase
+            .from('certification_workflows')
+            .insert({
+              user_id: user.user_id,
+              course_id: user.course_id,
+              level: user.level,
+              current_step: 'exam',
+              exam_status: 'pending_submission',
+              admin_approval_status: 'pending'
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error creating workflow:', createError);
+            continue;
+          }
+          workflow = newWorkflow;
+        }
+
+        // Only show workflows that are pending admin approval
+        if (workflow.admin_approval_status === 'pending') {
+          workflowsToDisplay.push({
+            ...workflow,
+            first_name: user.first_name,
+            last_name: user.last_name
+          });
+        }
+      }
+      
+      setWorkflows(workflowsToDisplay);
     } catch (error) {
       console.error('Error fetching certifications:', error);
       toast({
@@ -165,24 +252,24 @@ const CertificationReview = () => {
           Certification Review Dashboard
         </h1>
         <p className="text-muted-foreground">
-          Review and approve certification applications from students
+          Review and approve students who have completed all course sections
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending Certification Requests</CardTitle>
+          <CardTitle>Students Ready for Certification Review</CardTitle>
           <CardDescription>
-            {workflows.length} certification{workflows.length !== 1 ? 's' : ''} awaiting review
+            {workflows.length} student{workflows.length !== 1 ? 's' : ''} who completed all sections awaiting review
           </CardDescription>
         </CardHeader>
         <CardContent>
           {workflows.length === 0 ? (
             <div className="text-center py-8">
               <ClipboardCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Pending Certifications</h3>
+              <h3 className="text-lg font-semibold mb-2">No Students Ready for Review</h3>
               <p className="text-muted-foreground">
-                All certification requests have been reviewed.
+                No students have completed all course sections yet, or all have been reviewed.
               </p>
             </div>
           ) : (
@@ -224,7 +311,7 @@ const CertificationReview = () => {
                         <Badge variant="secondary">{workflow.current_step}</Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(workflow.created_at).toLocaleDateString()}
+                        {formatDistanceToNow(new Date(workflow.created_at), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
