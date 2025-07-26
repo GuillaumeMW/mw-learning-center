@@ -78,28 +78,17 @@ serve(async (req) => {
     logStep("Workflow validated", { workflowId: workflow.id });
 
     // TODO: Integrate with SignNow API
-    // This is a placeholder - actual implementation depends on SignNow API structure
-    const signNowResponse = await fetch("https://api.signnow.com/document", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${signNowApiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        template_id: `level_${level}_contract_template`,
-        user_email: userData.user.email,
-        // Add other required SignNow fields
-      })
-    });
+    // Mock implementation for now - returns a placeholder signing URL
+    logStep("Using mock SignNow implementation");
+    
+    const signNowData = {
+      document_id: `mock_doc_${Date.now()}`,
+      signing_url: `https://app.signnow.com/sign/${Date.now()}?mock=true`
+    };
+    
+    const signingUrl = signNowData.signing_url;
 
-    if (!signNowResponse.ok) {
-      throw new Error(`SignNow API error: ${signNowResponse.statusText}`);
-    }
-
-    const signNowData = await signNowResponse.json();
-    const signingUrl = signNowData.signing_url; // Adjust based on actual SignNow response structure
-
-    logStep("SignNow contract created", { documentId: signNowData.document_id });
+    logStep("Mock SignNow contract created", { documentId: signNowData.document_id });
 
     // Update workflow
     const { error: updateError } = await supabaseService
