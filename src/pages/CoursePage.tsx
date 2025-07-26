@@ -17,7 +17,9 @@ import {
   Clock, 
   BookOpen, 
   Users,
-  Target
+  Target,
+  GraduationCap,
+  FileText
 } from "lucide-react";
 
 const CoursePage = () => {
@@ -34,10 +36,12 @@ const CoursePage = () => {
   const [courseProgress, setCourseProgress] = useState(0);
   const [hasStructuredContent, setHasStructuredContent] = useState(false);
   const [totalItemsCount, setTotalItemsCount] = useState(0);
+  const [certificationWorkflow, setCertificationWorkflow] = useState<any>(null);
 
   useEffect(() => {
     if (courseId && user) {
       fetchCourseData();
+      fetchCertificationWorkflow();
     }
   }, [courseId, user]);
 
@@ -152,6 +156,24 @@ const CoursePage = () => {
     }
   };
 
+  const fetchCertificationWorkflow = async () => {
+    if (!course?.level || !user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('certification_workflows')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('level', course.level)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      setCertificationWorkflow(data);
+    } catch (error) {
+      console.error('Error fetching certification workflow:', error);
+    }
+  };
+
   const handleStartLesson = (lessonId: string) => {
     navigate(`/course/${courseId}/lesson/${lessonId}`);
   };
@@ -257,6 +279,80 @@ const CoursePage = () => {
                   <Progress value={courseProgress} className="h-2" />
                 </CardContent>
               </Card>
+
+              {/* Certification Section */}
+              {courseProgress === 100 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5" />
+                      Certification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!certificationWorkflow ? (
+                      <div className="space-y-3">
+                        <p className="text-muted-foreground">
+                          Congratulations! You've completed this course. Start your certification process.
+                        </p>
+                        <Button 
+                          onClick={() => navigate(`/certification/${course.level}/exam`)}
+                          className="w-full"
+                        >
+                          <GraduationCap className="h-4 w-4 mr-2" />
+                          Start Certification Process
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span>Certification Status:</span>
+                          <Badge variant="outline">{certificationWorkflow.current_step}</Badge>
+                        </div>
+                        
+                        {certificationWorkflow.current_step === 'exam' && certificationWorkflow.exam_status === 'pending_submission' && (
+                          <Button 
+                            onClick={() => navigate(`/certification/${course.level}/exam`)}
+                            className="w-full"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Take Certification Exam
+                          </Button>
+                        )}
+                        
+                        {certificationWorkflow.current_step === 'admin_approval' && certificationWorkflow.admin_approval_status === 'approved' && (
+                          <Button 
+                            onClick={() => navigate(`/certification/${course.level}/contract`)}
+                            className="w-full"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Sign Contract
+                          </Button>
+                        )}
+                        
+                        {certificationWorkflow.current_step === 'contract' && certificationWorkflow.contract_status === 'signed' && (
+                          <Button 
+                            onClick={() => navigate(`/certification/${course.level}/payment`)}
+                            className="w-full"
+                          >
+                            <GraduationCap className="h-4 w-4 mr-2" />
+                            Complete Payment
+                          </Button>
+                        )}
+                        
+                        {certificationWorkflow.subscription_status === 'active' && (
+                          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 text-center">
+                            <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="font-medium">Certification Complete!</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>

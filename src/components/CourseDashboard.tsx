@@ -8,7 +8,7 @@ import CourseCard from "./CourseCard";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock } from "lucide-react";
+import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock, FileText, CheckCircle2, Clock } from "lucide-react";
 import certificateBadge from "@/assets/mw_certificate_l1.png";
 
 interface CourseWithNestedContent extends Course {
@@ -17,9 +17,19 @@ interface CourseWithNestedContent extends Course {
   _hasStructuredContent: boolean;
 }
 
+interface CertificationWorkflow {
+  id: string;
+  current_step: string;
+  exam_status: string;
+  admin_approval_status: string;
+  contract_status: string;
+  subscription_status: string;
+}
+
 const CourseDashboard = () => {
   const [courses, setCourses] = useState<CourseWithNestedContent[]>([]);
   const [userProgress, setUserProgress] = useState<any[]>([]);
+  const [certificationWorkflows, setCertificationWorkflows] = useState<Record<number, CertificationWorkflow>>({});
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -28,6 +38,7 @@ const CourseDashboard = () => {
   useEffect(() => {
     fetchCourses();
     fetchUserProgress();
+    fetchCertificationWorkflows();
   }, [user]);
 
   const fetchCourses = async () => {
@@ -103,6 +114,28 @@ const CourseDashboard = () => {
     }
   };
 
+  const fetchCertificationWorkflows = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('certification_workflows')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      const workflowsByLevel = data?.reduce((acc, workflow) => {
+        acc[workflow.level] = workflow;
+        return acc;
+      }, {} as Record<number, CertificationWorkflow>) || {};
+      
+      setCertificationWorkflows(workflowsByLevel);
+    } catch (error) {
+      console.error('Error fetching certification workflows:', error);
+    }
+  };
+
   const getCourseStatus = (course: Course): CourseStatus => {
     // Level 1 is available if marked as available
     if (course.level === 1 && course.is_available) {
@@ -160,6 +193,131 @@ const CourseDashboard = () => {
 
   const handleContinueCourse = (courseId: string) => {
     navigate(`/course/${courseId}`);
+  };
+
+  const getCertificationStatus = (courseLevel: number) => {
+    const workflow = certificationWorkflows[courseLevel];
+    if (!workflow) return null;
+    
+    return {
+      status: workflow.current_step,
+      examStatus: workflow.exam_status,
+      adminApproval: workflow.admin_approval_status,
+      contractStatus: workflow.contract_status,
+      subscriptionStatus: workflow.subscription_status,
+    };
+  };
+
+  const getCertificationCTA = (course: CourseWithNestedContent) => {
+    const progress = getCourseProgress(course);
+    const certStatus = getCertificationStatus(course.level);
+    
+    // Course not completed yet
+    if (progress.percentage < 100) {
+      return null;
+    }
+    
+    // No certification workflow started
+    if (!certStatus) {
+      return (
+        <Button 
+          onClick={() => navigate(`/certification/${course.level}/exam`)}
+          className="w-full mt-4"
+          variant="outline"
+        >
+          <GraduationCap className="h-4 w-4 mr-2" />
+          Start Certification Process
+        </Button>
+      );
+    }
+    
+    // Handle different workflow steps
+    switch (certStatus.status) {
+      case 'exam':
+        if (certStatus.examStatus === 'pending_submission') {
+          return (
+            <Button 
+              onClick={() => navigate(`/certification/${course.level}/exam`)}
+              className="w-full mt-4"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Take Certification Exam
+            </Button>
+          );
+        } else if (certStatus.examStatus === 'under_review') {
+          return (
+            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <span className="text-sm font-medium">Exam Under Review</span>
+              </div>
+            </div>
+          );
+        }
+        break;
+        
+      case 'admin_approval':
+        if (certStatus.adminApproval === 'pending') {
+          return (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium">Awaiting Admin Approval</span>
+              </div>
+            </div>
+          );
+        } else if (certStatus.adminApproval === 'approved') {
+          return (
+            <Button 
+              onClick={() => navigate(`/certification/${course.level}/contract`)}
+              className="w-full mt-4"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Sign Contract
+            </Button>
+          );
+        }
+        break;
+        
+      case 'contract':
+        if (certStatus.contractStatus === 'pending_signature') {
+          return (
+            <Button 
+              onClick={() => navigate(`/certification/${course.level}/contract`)}
+              className="w-full mt-4"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Sign Contract
+            </Button>
+          );
+        } else if (certStatus.contractStatus === 'signed') {
+          return (
+            <Button 
+              onClick={() => navigate(`/certification/${course.level}/payment`)}
+              className="w-full mt-4"
+            >
+              <GraduationCap className="h-4 w-4 mr-2" />
+              Complete Payment
+            </Button>
+          );
+        }
+        break;
+        
+      case 'payment':
+        if (certStatus.subscriptionStatus === 'active') {
+          return (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span className="text-sm font-medium">Certification Complete!</span>
+              </div>
+            </div>
+          );
+        }
+        break;
+    }
+    
+    return null;
   };
 
   if (loading) {
@@ -234,21 +392,26 @@ const CourseDashboard = () => {
                 )}
 
                 {/* CTA Button */}
-                <Button 
-                  size="lg" 
-                  className="text-lg px-8 py-6 hover-scale"
-                  onClick={() => navigate(`/course/${currentCourse.id}`)}
-                >
-                  {courseProgress.completed > 0 ? (
-                    <>
-                      Resume Course <ArrowRight className="ml-2 h-5 w-5" />
-                    </>
-                  ) : (
-                    <>
-                      Start Level {currentCourse.level} <ArrowRight className="ml-2 h-5 w-5" />
-                    </>
-                  )}
-                </Button>
+                <div className="space-y-3">
+                  <Button 
+                    size="lg" 
+                    className="text-lg px-8 py-6 hover-scale w-full"
+                    onClick={() => navigate(`/course/${currentCourse.id}`)}
+                  >
+                    {courseProgress.completed > 0 ? (
+                      <>
+                        Resume Course <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
+                    ) : (
+                      <>
+                        Start Level {currentCourse.level} <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                  
+                  {/* Certification CTA */}
+                  {getCertificationCTA(currentCourse)}
+                </div>
               </div>
 
               {/* Certificate Badge */}
@@ -333,6 +496,13 @@ const CourseDashboard = () => {
                     {status === 'locked' && 'Complete previous levels first'}
                     {status === 'coming-soon' && 'Coming soon'}
                   </div>
+                  
+                  {/* Certification Status */}
+                  {progress.percentage === 100 && (
+                    <div className="mt-2">
+                      {getCertificationCTA(course)}
+                    </div>
+                  )}
                 </div>
               </div>
             );

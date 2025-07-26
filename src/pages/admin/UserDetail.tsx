@@ -24,9 +24,87 @@ import {
   Timer,
   Loader2,
   Phone,
-  Globe
+  Globe,
+  GraduationCap,
+  FileText
 } from 'lucide-react';
+import { useState as useReactState, useEffect as useReactEffect } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
+
+// Certification Status Component
+const CertificationStatusDisplay = ({ userId }: { userId: string }) => {
+  const [workflows, setWorkflows] = useReactState<any[]>([]);
+  const [loading, setLoading] = useReactState(true);
+
+  useReactEffect(() => {
+    const fetchWorkflows = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('certification_workflows')
+          .select('*, courses(title, level)')
+          .eq('user_id', userId)
+          .order('level');
+
+        if (error) throw error;
+        setWorkflows(data || []);
+      } catch (error) {
+        console.error('Error fetching certification workflows:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWorkflows();
+  }, [userId]);
+
+  if (loading) {
+    return <div>Loading certification status...</div>;
+  }
+
+  if (workflows.length === 0) {
+    return <div className="text-muted-foreground">No certification workflows started</div>;
+  }
+
+  const getStatusBadge = (workflow: any) => {
+    if (workflow.subscription_status === 'active') {
+      return <Badge className="bg-green-600">Certified</Badge>;
+    }
+    
+    switch (workflow.current_step) {
+      case 'exam':
+        return <Badge variant="outline">Exam Phase</Badge>;
+      case 'admin_approval':
+        return <Badge variant="secondary">Under Review</Badge>;
+      case 'contract':
+        return <Badge variant="outline">Contract Phase</Badge>;
+      case 'payment':
+        return <Badge variant="outline">Payment Phase</Badge>;
+      default:
+        return <Badge variant="outline">In Progress</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {workflows.map((workflow) => (
+        <div key={workflow.id} className="flex items-center justify-between p-3 border rounded-lg">
+          <div className="flex items-center gap-3">
+            <GraduationCap className="h-4 w-4 text-primary" />
+            <div>
+              <div className="font-medium">Level {workflow.level} Certification</div>
+              <div className="text-sm text-muted-foreground">
+                {workflow.courses?.title}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {getStatusBadge(workflow)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 interface UserDetailData {
   id: string;
@@ -449,6 +527,19 @@ const UserDetail = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Certification Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Certification Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CertificationStatusDisplay userId={userData.id} />
         </CardContent>
       </Card>
 
