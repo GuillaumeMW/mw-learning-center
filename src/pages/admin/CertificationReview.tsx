@@ -51,7 +51,7 @@ const CertificationReview = () => {
   const fetchPendingCertifications = async () => {
     try {
       // Get all users who have completed all sections for any course level
-      // First, get all users who have progress and their course completions
+      // First, get all user progress with course information
       const { data: usersWithProgress, error: progressError } = await supabase
         .from('user_progress')
         .select(`
@@ -59,11 +59,6 @@ const CertificationReview = () => {
           course_id,
           subsection_id,
           completed_at,
-          profiles!inner (
-            user_id,
-            first_name,
-            last_name
-          ),
           courses!inner (
             id,
             level,
@@ -99,8 +94,6 @@ const CertificationReview = () => {
             user_id: progress.user_id,
             course_id: progress.course_id,
             level: (progress.courses as any).level,
-            first_name: (progress.profiles as any).first_name,
-            last_name: (progress.profiles as any).last_name,
             completedSubsections: new Set()
           };
         }
@@ -115,8 +108,21 @@ const CertificationReview = () => {
                requiredSubsections.every(subId => user.completedSubsections.has(subId));
       });
 
-      // Now check existing certification workflows for these users
+      if (eligibleUsers.length === 0) {
+        setWorkflows([]);
+        return;
+      }
+
+      // Get profile information for eligible users
       const eligibleUserIds = eligibleUsers.map(u => u.user_id);
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', eligibleUserIds);
+
+      if (profileError) throw profileError;
+
+      // Now check existing certification workflows for these users
       const { data: existingWorkflows, error: workflowError } = await supabase
         .from('certification_workflows')
         .select('*')
@@ -128,6 +134,9 @@ const CertificationReview = () => {
       const workflowsToDisplay = [];
       
       for (const user of eligibleUsers) {
+        // Find profile for this user
+        const profile = profileData?.find(p => p.user_id === user.user_id);
+        
         let workflow = existingWorkflows?.find(w => 
           w.user_id === user.user_id && w.level === user.level
         );
@@ -158,8 +167,8 @@ const CertificationReview = () => {
         if (workflow.admin_approval_status === 'pending') {
           workflowsToDisplay.push({
             ...workflow,
-            first_name: user.first_name,
-            last_name: user.last_name
+            first_name: profile?.first_name || '',
+            last_name: profile?.last_name || ''
           });
         }
       }
