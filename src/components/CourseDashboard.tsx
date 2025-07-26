@@ -10,6 +10,7 @@ import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Loader2, GraduationCap, Target, BookOpen, ArrowRight, Lock, FileText, CheckCircle2, Clock } from "lucide-react";
 import certificateBadge from "@/assets/mw_certificate_l1.png";
+import CertificationWorkflowCards from "./CertificationWorkflowCards";
 
 interface CourseWithNestedContent extends Course {
   sections?: (Section & { subsections?: Subsection[] })[];
@@ -208,118 +209,6 @@ const CourseDashboard = () => {
     };
   };
 
-  const getCertificationCTA = (course: CourseWithNestedContent) => {
-    const progress = getCourseProgress(course);
-    const certStatus = getCertificationStatus(course.level);
-    
-    // Course not completed yet
-    if (progress.percentage < 100) {
-      return null;
-    }
-    
-    // No certification workflow started
-    if (!certStatus) {
-      return (
-        <Button 
-          onClick={() => navigate(`/certification/${course.level}/exam`)}
-          className="w-full mt-4"
-          variant="outline"
-        >
-          <GraduationCap className="h-4 w-4 mr-2" />
-          Start Certification Process
-        </Button>
-      );
-    }
-    
-    // Handle different workflow steps
-    switch (certStatus.status) {
-      case 'exam':
-        if (certStatus.examStatus === 'pending_submission') {
-          return (
-            <Button 
-              onClick={() => navigate(`/certification/${course.level}/exam`)}
-              className="w-full mt-4"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Take Certification Exam
-            </Button>
-          );
-        } else if (certStatus.examStatus === 'under_review') {
-          return (
-            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm font-medium">Exam Under Review</span>
-              </div>
-            </div>
-          );
-        }
-        break;
-        
-      case 'admin_approval':
-        if (certStatus.adminApproval === 'pending') {
-          return (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium">Awaiting Admin Approval</span>
-              </div>
-            </div>
-          );
-        } else if (certStatus.adminApproval === 'approved') {
-          return (
-            <Button 
-              onClick={() => navigate(`/certification/${course.level}/contract`)}
-              className="w-full mt-4"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Sign Contract
-            </Button>
-          );
-        }
-        break;
-        
-      case 'contract':
-        if (certStatus.contractStatus === 'pending_signature') {
-          return (
-            <Button 
-              onClick={() => navigate(`/certification/${course.level}/contract`)}
-              className="w-full mt-4"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Sign Contract
-            </Button>
-          );
-        } else if (certStatus.contractStatus === 'signed') {
-          return (
-            <Button 
-              onClick={() => navigate(`/certification/${course.level}/payment`)}
-              className="w-full mt-4"
-            >
-              <GraduationCap className="h-4 w-4 mr-2" />
-              Complete Payment
-            </Button>
-          );
-        }
-        break;
-        
-      case 'payment':
-        if (certStatus.subscriptionStatus === 'active') {
-          return (
-            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium">Certification Complete!</span>
-              </div>
-            </div>
-          );
-        }
-        break;
-    }
-    
-    return null;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -408,9 +297,6 @@ const CourseDashboard = () => {
                       </>
                     )}
                   </Button>
-                  
-                  {/* Certification CTA */}
-                  {getCertificationCTA(currentCourse)}
                 </div>
               </div>
 
@@ -433,6 +319,21 @@ const CourseDashboard = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Certification Workflow Cards */}
+      {currentCourse && hasStarted && (
+        <div className="max-w-6xl mx-auto">
+          <CertificationWorkflowCards 
+            course={{
+              id: currentCourse.id,
+              level: currentCourse.level,
+              title: currentCourse.title
+            }}
+            courseProgress={courseProgress.percentage}
+            certificationWorkflow={certificationWorkflows[currentCourse.level] || null}
+          />
         </div>
       )}
 
@@ -496,13 +397,6 @@ const CourseDashboard = () => {
                     {status === 'locked' && 'Complete previous levels first'}
                     {status === 'coming-soon' && 'Coming soon'}
                   </div>
-                  
-                  {/* Certification Status */}
-                  {progress.percentage === 100 && (
-                    <div className="mt-2">
-                      {getCertificationCTA(course)}
-                    </div>
-                  )}
                 </div>
               </div>
             );
