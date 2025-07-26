@@ -68,7 +68,7 @@ const CertificationExamPage = () => {
         // Construct the pre-filled Google Form URL
         let prefilledExamUrl = courseData.exam_url || '';
         if (user?.id && level && prefilledExamUrl) {
-          const userIdEntryId = "entry.1277700754"; // Google Form entry ID for user ID
+          const userIdEntryId = "entry.2020796157"; // Google Form entry ID for user ID
           const levelEntryId = "entry.1742429722";   // Google Form entry ID for certification level
           
           // Debug: log the values being used
