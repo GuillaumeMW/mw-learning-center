@@ -61,7 +61,7 @@ const CertificationWorkflowCards = ({
       icon: FileText,
       description: 'Take the certification exam',
       isUnlocked: courseProgress === 100,
-      isCompleted: certificationWorkflow?.exam_status === 'passed',
+      isCompleted: certificationWorkflow?.exam_status === 'passed' || certificationWorkflow?.admin_approval_status === 'approved',
       action: () => navigate(`/certification/${course.level}/exam`),
       actionText: getExamActionText(),
       message: getExamMessage()
@@ -113,42 +113,46 @@ const CertificationWorkflowCards = ({
   ];
 
   function getExamActionText() {
-    console.log('getExamActionText - exam_status:', certificationWorkflow?.exam_status);
+    console.log('getExamActionText - exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
     if (!certificationWorkflow) return 'Start Exam';
+    // If admin approved, exam is considered passed
+    if (certificationWorkflow.admin_approval_status === 'approved') return 'Passed';
+    if (certificationWorkflow.exam_status === 'passed') return 'Passed';
     if (certificationWorkflow.exam_status === 'pending_submission') return 'Take Exam';
     if (certificationWorkflow.exam_status === 'under_review') return 'Under Review';
-    if (certificationWorkflow.exam_status === 'passed') return 'Passed';
     return 'Take Exam';
   }
 
   function getExamMessage() {
-    console.log('getExamMessage - courseProgress:', courseProgress, 'exam_status:', certificationWorkflow?.exam_status);
+    console.log('getExamMessage - courseProgress:', courseProgress, 'exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
     if (courseProgress < 100) return 'Complete the course first to unlock the exam.';
     if (!certificationWorkflow) return 'Ready to take your certification exam!';
+    // If admin approved, exam is considered passed
+    if (certificationWorkflow.admin_approval_status === 'approved') return 'Exam completed successfully!';
+    if (certificationWorkflow.exam_status === 'passed') return 'Exam completed successfully!';
     if (certificationWorkflow.exam_status === 'pending_submission') return 'Take your certification exam to proceed.';
     if (certificationWorkflow.exam_status === 'under_review') return 'Your exam is being reviewed by our team.';
-    if (certificationWorkflow.exam_status === 'passed') return 'Exam completed successfully!';
     return 'Take your certification exam to proceed.';
   }
 
   function getApprovalActionText() {
     console.log('getApprovalActionText - exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
-    if (!certificationWorkflow?.exam_status || certificationWorkflow.exam_status !== 'passed') return 'Locked';
-    if (certificationWorkflow.admin_approval_status === 'pending') return 'Under Review';
-    if (certificationWorkflow.admin_approval_status === 'approved') return 'Approved';
+    if (certificationWorkflow?.admin_approval_status === 'approved') return 'Approved';
+    if (certificationWorkflow?.admin_approval_status === 'pending') return 'Under Review';
+    if (!certificationWorkflow) return 'Locked';
     return 'Waiting';
   }
 
   function getApprovalMessage() {
     console.log('getApprovalMessage - exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
-    if (!certificationWorkflow?.exam_status || certificationWorkflow.exam_status !== 'passed') {
-      return 'Pass the exam first to unlock admin review.';
+    if (certificationWorkflow?.admin_approval_status === 'approved') {
+      return 'Your certification has been approved by an administrator!';
     }
-    if (certificationWorkflow.admin_approval_status === 'pending') {
+    if (certificationWorkflow?.admin_approval_status === 'pending') {
       return 'Your exam results are being reviewed by an administrator.';
     }
-    if (certificationWorkflow.admin_approval_status === 'approved') {
-      return 'Your certification has been approved by an administrator!';
+    if (!certificationWorkflow) {
+      return 'Complete the exam first to unlock admin review.';
     }
     return 'Waiting for admin review of your exam results.';
   }
