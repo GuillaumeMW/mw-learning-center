@@ -95,7 +95,10 @@ const CertificationWorkflowCards = ({
       description: 'Complete certification payment',
       isUnlocked: certificationWorkflow?.contract_status === 'signed',
       isCompleted: certificationWorkflow?.subscription_status === 'active',
-      action: () => navigate(`/certification/${course.level}/payment`),
+      action: () => {
+        console.log('Payment card clicked - navigating to:', `/certification/${course.level}/payment`);
+        navigate(`/certification/${course.level}/payment`);
+      },
       actionText: getPaymentActionText(),
       message: getPaymentMessage()
     },
@@ -178,9 +181,10 @@ const CertificationWorkflowCards = ({
   }
 
   function getPaymentActionText() {
+    console.log('getPaymentActionText - contract_status:', certificationWorkflow?.contract_status, 'subscription_status:', certificationWorkflow?.subscription_status);
     if (certificationWorkflow?.contract_status !== 'signed') return 'Locked';
     if (certificationWorkflow.subscription_status === 'active') return 'Payment Complete';
-    return 'Complete Payment';
+    return 'Pay Now';
   }
 
   function getPaymentMessage() {
