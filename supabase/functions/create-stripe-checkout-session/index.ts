@@ -93,10 +93,10 @@ serve(async (req) => {
 
     // Define default pricing based on level if no price_id provided
     const levelPricing = {
-      1: { amount: 9900, name: "Level 1 Certification" }, // $99
-      2: { amount: 14900, name: "Level 2 Certification" }, // $149
-      3: { amount: 19900, name: "Level 3 Certification" }, // $199
-      4: { amount: 24900, name: "Level 4 Certification" }, // $249
+      1: { amount: 2999, name: "Level 1 Certification" }, // $29.99
+      2: { amount: 4999, name: "Level 2 Certification" }, // $49.99
+      3: { amount: 7999, name: "Level 3 Certification" }, // $79.99
+      4: { amount: 9999, name: "Level 4 Certification" }, // $99.99
     };
 
     const pricing = levelPricing[level as keyof typeof levelPricing];
@@ -161,7 +161,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      checkout_url: session.url,
+      url: session.url,  // Changed from checkout_url to url
       session_id: session.id
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
