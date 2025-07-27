@@ -36,6 +36,13 @@ const CertificationWorkflowCards = ({
 }: CertificationWorkflowCardsProps) => {
   const navigate = useNavigate();
 
+  // Debug logging to see what data we're receiving
+  console.log('CertificationWorkflowCards Debug:', {
+    course,
+    courseProgress,
+    certificationWorkflow
+  });
+
   const steps = [
     {
       id: 'course',
@@ -64,7 +71,7 @@ const CertificationWorkflowCards = ({
       title: 'Admin Approval',
       icon: UserCheck,
       description: 'Wait for admin review',
-      isUnlocked: certificationWorkflow?.exam_status === 'passed' || certificationWorkflow?.current_step === 'admin_approval',
+      isUnlocked: certificationWorkflow?.exam_status === 'passed' || certificationWorkflow?.current_step === 'admin_approval' || certificationWorkflow?.admin_approval_status === 'approved',
       isCompleted: certificationWorkflow?.admin_approval_status === 'approved',
       action: null,
       actionText: getApprovalActionText(),
@@ -106,30 +113,34 @@ const CertificationWorkflowCards = ({
   ];
 
   function getExamActionText() {
+    console.log('getExamActionText - exam_status:', certificationWorkflow?.exam_status);
     if (!certificationWorkflow) return 'Start Exam';
     if (certificationWorkflow.exam_status === 'pending_submission') return 'Take Exam';
     if (certificationWorkflow.exam_status === 'under_review') return 'Under Review';
-    if (certificationWorkflow.exam_status === 'passed') return 'Exam Passed';
+    if (certificationWorkflow.exam_status === 'passed') return 'Passed';
     return 'Take Exam';
   }
 
   function getExamMessage() {
+    console.log('getExamMessage - courseProgress:', courseProgress, 'exam_status:', certificationWorkflow?.exam_status);
     if (courseProgress < 100) return 'Complete the course first to unlock the exam.';
     if (!certificationWorkflow) return 'Ready to take your certification exam!';
     if (certificationWorkflow.exam_status === 'pending_submission') return 'Take your certification exam to proceed.';
     if (certificationWorkflow.exam_status === 'under_review') return 'Your exam is being reviewed by our team.';
-    if (certificationWorkflow.exam_status === 'passed') return 'Exam passed! Waiting for admin approval.';
+    if (certificationWorkflow.exam_status === 'passed') return 'Exam completed successfully!';
     return 'Take your certification exam to proceed.';
   }
 
   function getApprovalActionText() {
-    if (!certificationWorkflow?.exam_status || certificationWorkflow.exam_status !== 'passed') return 'Waiting';
+    console.log('getApprovalActionText - exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
+    if (!certificationWorkflow?.exam_status || certificationWorkflow.exam_status !== 'passed') return 'Locked';
     if (certificationWorkflow.admin_approval_status === 'pending') return 'Under Review';
-    if (certificationWorkflow.admin_approval_status === 'approved') return 'Approved!';
+    if (certificationWorkflow.admin_approval_status === 'approved') return 'Approved';
     return 'Waiting';
   }
 
   function getApprovalMessage() {
+    console.log('getApprovalMessage - exam_status:', certificationWorkflow?.exam_status, 'admin_approval_status:', certificationWorkflow?.admin_approval_status);
     if (!certificationWorkflow?.exam_status || certificationWorkflow.exam_status !== 'passed') {
       return 'Pass the exam first to unlock admin review.';
     }
@@ -137,7 +148,7 @@ const CertificationWorkflowCards = ({
       return 'Your exam results are being reviewed by an administrator.';
     }
     if (certificationWorkflow.admin_approval_status === 'approved') {
-      return 'Your certification has been approved! You can now sign the contract.';
+      return 'Your certification has been approved by an administrator!';
     }
     return 'Waiting for admin review of your exam results.';
   }
